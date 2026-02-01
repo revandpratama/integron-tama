@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+  // output = "../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["integron"]
+}
+
+enum PartnerStatus {
+  DRAFT
+  ONBOARDING
+  LIVE
+  MAINTENANCE
+  SUSPENDED
+
+  @@schema("integron")
+}
+
+enum KanbanStage {
+  AWAITING_KICKOFF
+  SANDBOX_ACTIVE
+  SIT_VERIFICATION
+  REVISION_PENDING
+  READY_FOR_DEPLOY
+
+  @@schema("integron")
+}
+
+model Partner {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  status      PartnerStatus
+  kanbanStage KanbanStage?
+  
+  // Doc Status tracking (JSON)
+  // expected structure: { sit: 'PENDING', reconcile: 'PENDING', devsite: 'PENDING' }
+  docStatus   Json     @default("{\"sit\": \"PENDING\", \"reconcile\": \"PENDING\", \"devsite\": \"PENDING\"}")
+  
+  notes       String?  // [NEW] Added for Kanban notes
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  integrator  String?
+  
+  @@map("partners")
+  @@schema("integron")
+  
+  people    Person[]
+}
+
+enum FeatureCategory {
+  SNAP
+  NON_SNAP
+  @@schema("integron")
+}
+
+model Feature {
+  id               String          @id @default(cuid())
+  name             String
+  category         FeatureCategory
+  
+  // Technical Specs (Arrays as per requirement)
+  apigeeProducts   String[]
+  apigeeTraceProxies String[]
+  
+  notes            String?
+
+  // Relationships
+  contactPerson   Person? @relation(fields: [contactPersonId], references: [id])
+  contactPersonId String?
+  
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  
+  @@schema("integron")
+  @@map("features")
+}
+
+model Person {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  role      String
+  notes     String?
+
+  // Relationships
+  partners  Partner[]
+  features  Feature[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("people")
+  @@schema("integron")
+}
+
+model KnowledgeNote {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  tags      String[]
+  isPinned  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("knowledge_notes")
+  @@schema("integron")
+}
+
+enum ReminderLevel {
+  Info
+  Important
+  Critical
+
+  @@schema("integron")
+}
+
+model Reminder {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  scheduledAt DateTime
+  level       ReminderLevel @default(Info)
+  isCompleted Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("reminders")
+  @@schema("integron")
+}
+
+enum Role {
+  USER
+  ADMIN
+  @@schema("integron")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  passwordHash  String
+  role          Role      @default(USER)
+  isApproved    Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users")
+  @@schema("integron")
+}
