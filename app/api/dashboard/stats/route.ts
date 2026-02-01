@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export async function GET() {
     try {
@@ -50,14 +51,22 @@ export async function GET() {
 
         const stats = {
             partners: {
-                total: partnerCounts.reduce((acc: number, curr) => acc + curr._count.id, 0),
+                total: partnerCounts.reduce((acc: number, curr: Prisma.PickEnumerable<Prisma.PartnerGroupByOutputType, "status"[]> & {
+                    _count: {
+                        id: number;
+                    };
+                }) => acc + curr._count.id, 0),
                 byStatus: partnerCounts.reduce((acc: Record<string, number>, curr) => {
                     acc[curr.status] = curr._count.id;
                     return acc;
                 }, {} as Record<string, number>),
             },
             features: {
-                total: featureCounts.reduce((acc: number, curr) => acc + curr._count.id, 0),
+                total: featureCounts.reduce((acc: number, curr: Prisma.PickEnumerable<Prisma.FeatureGroupByOutputType, "category"[]> & {
+    _count: {
+        id: number;
+    };
+}) => acc + curr._count.id, 0),
                 byCategory: featureCounts.reduce((acc: Record<string, number>, curr) => {
                     acc[curr.category] = curr._count.id;
                     return acc;
