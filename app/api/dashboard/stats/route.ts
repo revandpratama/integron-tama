@@ -50,15 +50,15 @@ export async function GET() {
 
         const stats = {
             partners: {
-                total: partnerCounts.reduce((acc, curr) => acc + curr._count.id, 0),
-                byStatus: partnerCounts.reduce((acc, curr) => {
+                total: partnerCounts.reduce((acc: number, curr) => acc + curr._count.id, 0),
+                byStatus: partnerCounts.reduce((acc: Record<string, number>, curr) => {
                     acc[curr.status] = curr._count.id;
                     return acc;
                 }, {} as Record<string, number>),
             },
             features: {
-                total: featureCounts.reduce((acc, curr) => acc + curr._count.id, 0),
-                byCategory: featureCounts.reduce((acc, curr) => {
+                total: featureCounts.reduce((acc: number, curr) => acc + curr._count.id, 0),
+                byCategory: featureCounts.reduce((acc: Record<string, number>, curr) => {
                     acc[curr.category] = curr._count.id;
                     return acc;
                 }, {} as Record<string, number>),
