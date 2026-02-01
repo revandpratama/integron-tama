@@ -27,6 +27,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
+import { useState } from 'react';
 import Image from 'next/image';
 
 const DRAWER_WIDTH = 260;
@@ -156,24 +157,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Footer / Settings */}
       <Box sx={{ p: 2 }}>
         <Divider sx={{ mb: 2 }} />
-        <ListItemButton
-          sx={{
-            borderRadius: 2,
-            px: 2,
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            color: '#6b7280',
-          }}
-        >
-          <ListItemIcon sx={{ minWidth: collapsed ? 0 : 36, color: 'inherit', justifyContent: 'center' }}>
-            <SettingsOutlinedIcon />
-          </ListItemIcon>
-          {!collapsed && (
-            <ListItemText
-              primary="Settings"
-              primaryTypographyProps={{ fontSize: 14, fontWeight: 500 }}
-            />
-          )}
-        </ListItemButton>
         <ListItemButton
           onClick={handleLogout}
           sx={{

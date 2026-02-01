@@ -94,8 +94,8 @@ function FeatureRow({ feature, onEdit, onDelete, onNoteUpdate }: {
                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                    <Typography variant="caption" sx={{ color: '#9ca3af', width: 60 }}>Products:</Typography>
                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                       {feature.apigeeProducts.map(p => (
-                           <Chip key={p} label={p} size="small" variant="outlined" sx={{ height: 20, fontSize: 10, borderRadius: 1 }} />
+                       {feature.apigeeProducts.map((p, i) => (
+                           <Chip key={`${p}-${i}`} label={p} size="small" variant="outlined" sx={{ height: 20, fontSize: 10, borderRadius: 1 }} />
                        ))}
                    </Box>
                </Box>
@@ -104,8 +104,8 @@ function FeatureRow({ feature, onEdit, onDelete, onNoteUpdate }: {
                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                    <Typography variant="caption" sx={{ color: '#9ca3af', width: 60 }}>Proxies:</Typography>
                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                       {feature.apigeeTraceProxies.map(p => (
-                           <Chip key={p} label={p} size="small" variant="outlined" sx={{ height: 20, fontSize: 10, borderRadius: 1, bgcolor: '#f1f5f9', border: 'none' }} />
+                       {feature.apigeeTraceProxies.map((p, i) => (
+                           <Chip key={`${p}-${i}`} label={p} size="small" variant="outlined" sx={{ height: 20, fontSize: 10, borderRadius: 1, bgcolor: '#f1f5f9', border: 'none' }} />
                        ))}
                    </Box>
                </Box>
