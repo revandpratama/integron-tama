@@ -66,3 +66,27 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         );
     }
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        const { id } = await params;
+
+        // Check if partner exists
+        const existingPartner = await prisma.partner.findUnique({ where: { id } });
+        if (!existingPartner) {
+            return NextResponse.json({ error: 'Partner not found' }, { status: 404 });
+        }
+
+        await prisma.partner.delete({
+            where: { id },
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting partner:', error);
+        return NextResponse.json(
+            { error: 'Failed to delete partner' },
+            { status: 500 }
+        );
+    }
+}
