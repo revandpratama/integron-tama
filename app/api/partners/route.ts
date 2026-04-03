@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { CreatePartnerSchema } from '@/app/lib/validations/partner';
 import { ZodError } from 'zod';
+import { getSession } from '@/app/lib/auth';
 
 export async function GET(request: NextRequest) {
     try {
@@ -25,10 +26,10 @@ export async function GET(request: NextRequest) {
                 ]
             };
 
-            // Kanban needs all items, so we skip pagination for now
             const partners = await prisma.partner.findMany({
                 where: whereClause,
                 orderBy: { updatedAt: 'desc' },
+                include: { integrator: { select: { id: true, name: true, email: true } } }
             });
             return NextResponse.json(partners);
         }
@@ -47,7 +48,8 @@ export async function GET(request: NextRequest) {
             whereClause.OR = [
                 { name: searchFilter },
                 { code: searchFilter },
-                { integrator: searchFilter },
+                { integrator: { name: searchFilter } },
+                { integrator: { email: searchFilter } },
             ];
         }
 
@@ -58,6 +60,7 @@ export async function GET(request: NextRequest) {
                 orderBy: { [sortBy]: sortOrder },
                 skip: (page - 1) * limit,
                 take: limit,
+                include: { integrator: { select: { id: true, name: true, email: true } } }
             }),
             prisma.partner.count({ where: whereClause })
         ]);
@@ -89,12 +92,28 @@ export async function POST(request: NextRequest) {
 
         const partner = await prisma.partner.create({
             data: {
-                ...partnerData,
+                name: partnerData.name,
+                code: partnerData.code,
                 status: partnerData.status as any,
                 kanbanStage: partnerData.kanbanStage as any,
                 docStatus: partnerData.docStatus as any,
+                notes: partnerData.notes,
+                integratorId: partnerData.integratorId,
             },
         });
+
+        const session = await getSession();
+        if (session && session.id) {
+            await prisma.activityLog.create({
+                data: {
+                    userId: session.id as string,
+                    actionType: 'CREATE_PARTNER',
+                    entityType: 'partner',
+                    entityId: partner.id,
+                    metadata: { name: partner.name, status: partner.status }
+                }
+            });
+        }
 
         return NextResponse.json(partner, { status: 201 });
     } catch (error) {

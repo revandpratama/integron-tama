@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { CreateNoteSchema } from '@/app/knowledge/types';
 import { ZodError } from 'zod';
+import { getSession } from '@/app/lib/auth';
 
 export async function GET(request: NextRequest) {
     try {
@@ -63,6 +64,19 @@ export async function POST(request: NextRequest) {
         const note = await prisma.knowledgeNote.create({
             data: validatedData,
         });
+
+        const session = await getSession();
+        if (session && session.id) {
+            await prisma.activityLog.create({
+                data: {
+                    userId: session.id as string,
+                    actionType: 'CREATE_KNOWLEDGE',
+                    entityType: 'knowledge',
+                    entityId: note.id,
+                    metadata: { title: note.title }
+                }
+            });
+        }
 
         return NextResponse.json(note, { status: 201 });
     } catch (error) {

@@ -20,7 +20,7 @@ export default function LoginPage() {
 
         try {
             await axios.post('/api/auth/login', { email, password });
-            router.push('/');
+            window.location.href = '/';
         } catch (err: any) {
             setError(err.response?.data?.error || 'Login failed');
         } finally {

@@ -173,19 +173,6 @@ export default function KanbanPage() {
         const currentStage = partner.kanbanStage || 'AWAITING_KICKOFF';
 
         if (newStage && newStage !== currentStage) {
-            // Guardrail: Moving to READY_FOR_DEPLOY
-            if (newStage === 'READY_FOR_DEPLOY') {
-                if (!canMoveToReady(partner.docStatus)) {
-                    setToast({ 
-                        open: true, 
-                        message: "Cannot deploy: Missing required document approvals.", 
-                        severity: 'error' 
-                    });
-                    setActiveId(null);
-                    return; // Abort drop
-                }
-            }
-
             updatePartnerMutation.mutate({ id: activeId, data: { kanbanStage: newStage } });
         }
 
@@ -497,8 +484,8 @@ function KanbanCard({
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
                  {partner.integrator ? (
                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                         <Avatar sx={{ width: 20, height: 20, fontSize: 10, bgcolor: '#fca5a5' }}>{partner.integrator.charAt(0)}</Avatar>
-                         <Typography variant="caption" color="text.secondary">{partner.integrator}</Typography>
+                         <Avatar sx={{ width: 20, height: 20, fontSize: 10, bgcolor: '#fca5a5' }}>{(partner.integrator.name || partner.integrator.email || 'U').charAt(0).toUpperCase()}</Avatar>
+                         <Typography variant="caption" color="text.secondary">{partner.integrator.name || partner.integrator.email}</Typography>
                      </Box>
                  ) : (
                      <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>Unassigned</Typography>

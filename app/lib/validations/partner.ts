@@ -17,7 +17,7 @@ export const CreatePartnerSchema = z.object({
     kanbanStage: KanbanStageEnum.optional(),
     docStatus: PartnerDocStatusSchema.optional(),
 
-    integrator: z.string().optional(),
+    integratorId: z.string().optional(),
     notes: z.string().optional(),
 });
 

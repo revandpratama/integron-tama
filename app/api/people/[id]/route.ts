@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { UpdatePersonSchema } from '@/app/lib/validations/people';
 import { ZodError } from 'zod';
+import { getSession } from '@/app/lib/auth';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -37,6 +38,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
         const { partnerIds, featureIds, ...personData } = validatedData;
 
+        const existingPerson = await prisma.person.findUnique({ where: { id } });
+
         const person = await prisma.person.update({
             where: { id },
             data: {
@@ -55,6 +58,30 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 features: true,
             }
         });
+
+        const session = await getSession();
+        if (session && session.id && existingPerson) {
+            const changedFields: string[] = [];
+            for (const key of Object.keys(personData)) {
+                if (JSON.stringify((personData as any)[key]) !== JSON.stringify((existingPerson as any)[key])) {
+                    changedFields.push(key);
+                }
+            }
+            if (partnerIds) changedFields.push('partners');
+            if (featureIds) changedFields.push('features');
+
+            if (changedFields.length > 0) {
+                await prisma.activityLog.create({
+                     data: {
+                         userId: session.id as string,
+                         actionType: 'UPDATE_PERSON',
+                         entityType: 'people',
+                         entityId: person.id,
+                         metadata: { updatedFields: changedFields }
+                     }
+                 });
+            }
+        }
 
         return NextResponse.json(person);
     } catch (error) {
@@ -76,9 +103,25 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
-        await prisma.person.delete({
-            where: { id },
-        });
+        const existingPerson = await prisma.person.findUnique({ where: { id } });
+        if (existingPerson) {
+             await prisma.person.delete({
+                 where: { id },
+             });
+
+             const session = await getSession();
+             if (session && session.id) {
+                 await prisma.activityLog.create({
+                      data: {
+                          userId: session.id as string,
+                          actionType: 'DELETE_PERSON',
+                          entityType: 'people',
+                          entityId: id,
+                          metadata: { name: existingPerson.name, role: existingPerson.role }
+                      }
+                  });
+             }
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

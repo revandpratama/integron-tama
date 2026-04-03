@@ -1,7 +1,7 @@
-
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import {
   Box,
@@ -9,27 +9,27 @@ import {
   CardContent,
   Grid,
   Typography,
-  Stack,
   CircularProgress,
-  Chip,
   IconButton,
   Button,
   List,
   ListItem,
   ListItemText,
-  ListItemIcon
+  ListItemIcon,
+  Checkbox,
+  TextField,
+  Divider
 } from '@mui/material';
 import {
   Groups as GroupsIcon,
   CheckCircle as CheckCircleIcon,
   Extension as ExtensionIcon,
   MenuBook as MenuBookIcon,
-  ArrowForward as ArrowForwardIcon,
-  PushPin as PushPinIcon,
-  Update as UpdateIcon,
-  Code as CodeIcon
+  Add as AddIcon,
+  FormatListBulleted as FormatListBulletedIcon,
+  History as HistoryIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
-import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 
 interface DashboardStatsData {
@@ -54,24 +54,28 @@ interface DashboardStatsData {
   };
   knowledge: {
     total: number;
-    pinned: number;
   };
-  recentPartners: Array<{
-    id: string;
-    name: string;
-    code: string;
-    status: string;
-    updatedAt: string;
-  }>;
-  pinnedNotes: Array<{
+  todos: Array<{
     id: string;
     title: string;
-    tags: string[];
-    updatedAt: string;
+    isCompleted: boolean;
+    createdAt: string;
+  }>;
+  activityLogs: Array<{
+    id: string;
+    actionType: string;
+    entityType: string;
+    entityId: string;
+    metadata: any;
+    createdAt: string;
+    userName: string;
   }>;
 }
 
 export default function DashboardStats() {
+  const queryClient = useQueryClient();
+  const [newTodo, setNewTodo] = useState('');
+
   const { data, isLoading, error } = useQuery<DashboardStatsData>({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -80,6 +84,56 @@ export default function DashboardStats() {
     },
     refetchInterval: 30000,
   });
+
+  const addTodoMutation = useMutation({
+    mutationFn: async (title: string) => {
+      return axios.post('/api/todos', { title });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      setNewTodo('');
+    }
+  });
+
+  const toggleTodoMutation = useMutation({
+    mutationFn: async ({ id, isCompleted }: { id: string, isCompleted: boolean }) => {
+      return axios.patch(`/api/todos/${id}`, { isCompleted });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    }
+  });
+
+  const deleteTodoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return axios.delete(`/api/todos/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    }
+  });
+
+  const handleAddTodo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newTodo.trim()) {
+      addTodoMutation.mutate(newTodo.trim());
+    }
+  };
+
+  const renderActivityMessage = (log: any) => {
+    return (
+      <Box sx={{ width: '100%', wordBreak: 'break-word', whiteSpace: 'normal', pr: 2 }}>
+        <Typography variant="body2">
+          <strong>{log.userName}</strong> performed <strong>{log.actionType}</strong> on <em>{log.entityType}</em>
+        </Typography>
+        {log.metadata && Object.keys(log.metadata).length > 0 && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontFamily: 'monospace' }}>
+            {JSON.stringify(log.metadata)}
+          </Typography>
+        )}
+      </Box>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -105,13 +159,13 @@ export default function DashboardStats() {
         System Overview
       </Typography>
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={4} sx={{ mb: 6 }}>
         {/* Total Partners */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <SummaryCard
             title="Total Partners"
             value={data.partners.total}
-            icon={<GroupsIcon sx={{ fontSize: 40, color: 'primary.main' }} />}
+            icon={<GroupsIcon sx={{ fontSize: 64, color: 'primary.main' }} />}
             color="primary"
           />
         </Grid>
@@ -120,7 +174,7 @@ export default function DashboardStats() {
           <SummaryCard
             title="Live Partners"
             value={data.partners.byStatus.LIVE || 0}
-            icon={<CheckCircleIcon sx={{ fontSize: 40, color: 'success.main' }} />}
+            icon={<CheckCircleIcon sx={{ fontSize: 64, color: 'success.main' }} />}
             color="success"
           />
         </Grid>
@@ -129,133 +183,137 @@ export default function DashboardStats() {
           <SummaryCard
             title="Total Features"
             value={data.features.total}
-            icon={<ExtensionIcon sx={{ fontSize: 40, color: 'secondary.main' }} />}
+            icon={<ExtensionIcon sx={{ fontSize: 64, color: 'secondary.main' }} />}
             color="secondary"
           />
         </Grid>
         {/* Knowledge */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <SummaryCard
-            title="Knowledge Base"
+            title="Knowledge Base Notes"
             value={data.knowledge.total}
-            icon={<MenuBookIcon sx={{ fontSize: 40, color: 'info.main' }} />}
+            icon={<MenuBookIcon sx={{ fontSize: 64, color: 'info.main' }} />}
             color="info"
           />
         </Grid>
       </Grid>
 
-      <Grid container spacing={3}>
-        {/* Recent Activity */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                 <Box display="flex" alignItems="center" gap={1}>
-                    <UpdateIcon color="action" />
-                    <Typography variant="h6" fontWeight={600}>
-                    Recently Updated
-                    </Typography>
-                 </Box>
-                 <Button component={Link} href="/partners" size="small" endIcon={<ArrowForwardIcon />}>
-                    View All
-                 </Button>
+      <Grid container spacing={4} sx={{ minHeight: 500, flexGrow: 1 }}>
+        {/* Todo List */}
+        <Grid size={{ xs: 12, md: 5 }}>
+          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', maxHeight: 600 }}>
+            <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 4, overflow: 'hidden' }}>
+              <Box display="flex" alignItems="center" gap={1} mb={3}>
+                <FormatListBulletedIcon sx={{ color: 'primary.main', fontSize: 32 }} />
+                <Typography variant="h5" fontWeight={600}>
+                  My To-Do
+                </Typography>
               </Box>
-              
-              <List disablePadding>
-                  {data.recentPartners.length === 0 ? (
-                      <Typography color="text.secondary" textAlign="center" py={4}>
-                          No recent activity.
-                      </Typography>
-                  ) : (
-                      data.recentPartners.map((partner) => (
-                          <ListItem 
-                            key={partner.id} 
-                            disableGutters 
-                            component={Link} 
-                            href={`/partners?id=${partner.id}`} // Assuming we can link to partner details, or just partners page
-                            sx={{ 
-                                textDecoration: 'none', 
-                                color: 'inherit',
-                                borderBottom: '1px solid #f3f4f6',
-                                '&:last-child': { borderBottom: 'none' },
-                                '&:hover': { bgcolor: '#f9fafb' },
-                                px: 1,
-                                py: 1.5
-                            }}
-                          >
-                              <Box sx={{ width: '100%' }}>
-                                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                                      <Typography variant="subtitle2" fontWeight={600}>
-                                          {partner.name}
-                                      </Typography>
-                                      <Chip 
-                                        label={partner.status} 
-                                        size="small" 
-                                        color={partner.status === 'LIVE' ? 'success' : partner.status === 'ONBOARDING' ? 'info' : 'default'} 
-                                        variant="outlined"
-                                        sx={{ height: 20, fontSize: 10 }}
-                                      />
-                                  </Box>
-                                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                                      <Typography variant="caption" color="text.secondary" fontFamily="monospace">
-                                          {partner.code}
-                                      </Typography>
-                                      <Typography variant="caption" color="text.secondary">
-                                          {formatDistanceToNow(new Date(partner.updatedAt), { addSuffix: true })}
-                                      </Typography>
-                                  </Box>
-                              </Box>
-                          </ListItem>
-                      ))
-                  )}
+
+              <Box component="form" onSubmit={handleAddTodo} display="flex" gap={1} mb={2}>
+                <TextField
+                  size="small"
+                  fullWidth
+                  placeholder="What needs to be done?"
+                  value={newTodo}
+                  onChange={(e) => setNewTodo(e.target.value)}
+                  disabled={addTodoMutation.isPending}
+                />
+                <Button 
+                    type="submit" 
+                    variant="contained" 
+                    disabled={!newTodo.trim() || addTodoMutation.isPending}
+                    sx={{ minWidth: 'auto', px: 2 }}
+                >
+                  <AddIcon />
+                </Button>
+              </Box>
+
+              <List disablePadding sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+                {data.todos.length === 0 ? (
+                    <Typography color="text.secondary" textAlign="center" py={4}>
+                        Your to-do list is empty.
+                    </Typography>
+                ) : (
+                    data.todos.map((todo) => (
+                        <ListItem
+                           key={todo.id}
+                           disableGutters
+                           secondaryAction={
+                               <IconButton edge="end" onClick={() => deleteTodoMutation.mutate(todo.id)} size="small" color="error">
+                                   <DeleteIcon fontSize="small" />
+                               </IconButton>
+                           }
+                           sx={{ 
+                              borderBottom: '1px solid #f3f4f6',
+                              '&:last-child': { borderBottom: 'none' },
+                              py: 0.5,
+                           }}
+                        >
+                            <ListItemIcon sx={{ minWidth: 40 }}>
+                                <Checkbox
+                                    edge="start"
+                                    checked={todo.isCompleted}
+                                    tabIndex={-1}
+                                    disableRipple
+                                    onChange={(e) => toggleTodoMutation.mutate({ id: todo.id, isCompleted: e.target.checked })}
+                                    disabled={toggleTodoMutation.isPending && toggleTodoMutation.variables?.id === todo.id}
+                                />
+                            </ListItemIcon>
+                            <ListItemText 
+                                primary={todo.title} 
+                                sx={{ 
+                                    textDecoration: todo.isCompleted ? 'line-through' : 'none',
+                                    color: todo.isCompleted ? 'text.secondary' : 'text.primary',
+                                    wordBreak: 'break-word',
+                                    whiteSpace: 'normal',
+                                    pr: 2
+                                }}
+                            />
+                        </ListItem>
+                    ))
+                )}
               </List>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Pinned Notes */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                <Box display="flex" alignItems="center" gap={1}>
-                    <PushPinIcon sx={{ color: '#f59e0b' }} />
-                    <Typography variant="h6" fontWeight={600}>
-                    Pinned Notes
-                    </Typography>
-                </Box>
-                <Button component={Link} href="/knowledge" size="small" endIcon={<ArrowForwardIcon />}>
-                    Knowledge Base
-                </Button>
+        {/* Activity Log */}
+        <Grid size={{ xs: 12, md: 7 }}>
+          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', maxHeight: 600 }}>
+            <CardContent sx={{ p: 4, flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <Box display="flex" alignItems="center" gap={1} mb={3}>
+                <HistoryIcon color="action" sx={{ fontSize: 32 }} />
+                <Typography variant="h5" fontWeight={600}>
+                  Activity Log
+                </Typography>
               </Box>
 
-              <List disablePadding>
-                  {data.pinnedNotes.length === 0 ? (
+              <List disablePadding sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+                  {data.activityLogs.length === 0 ? (
                       <Typography color="text.secondary" textAlign="center" py={4}>
-                          No pinned notes.
+                          No recent activity.
                       </Typography>
                   ) : (
-                      data.pinnedNotes.map((note) => (
-                          <ListItem
-                             key={note.id}
-                             disableGutters
-                             sx={{ 
+                      data.activityLogs.map((log) => (
+                          <ListItem 
+                            key={log.id} 
+                            disableGutters 
+                            sx={{ 
+                                flexDirection: 'column', 
+                                alignItems: 'flex-start',
                                 borderBottom: '1px solid #f3f4f6',
                                 '&:last-child': { borderBottom: 'none' },
                                 py: 1.5,
                                 px: 1
-                             }}
+                            }}
                           >
-                              <Box sx={{ width: '100%' }}>
-                                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                                      {note.title}
+                              <Box width="100%" display="flex" justifyContent="space-between" mb={0.5}>
+                                  <Typography variant="caption" color="text.secondary">
+                                      {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
                                   </Typography>
-                                  <Box display="flex" gap={1} flexWrap="wrap">
-                                      {note.tags.map(tag => (
-                                          <Chip key={tag} label={tag} size="small" sx={{ height: 20, fontSize: 10, bgcolor: '#f3f4f6' }} />
-                                      ))}
-                                  </Box>
                               </Box>
+                              {renderActivityMessage(log)}
                           </ListItem>
                       ))
                   )}
@@ -270,14 +328,14 @@ export default function DashboardStats() {
 
 function SummaryCard({ title, value, icon, color }: { title: string; value: number; icon: React.ReactNode; color: string }) {
   return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
+    <Card sx={{ height: '100%', minHeight: 160, transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}>
+      <CardContent sx={{ p: 4 }}>
         <Box display="flex" justifyContent="space-between" alignItems="flex-start">
           <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            <Typography variant="subtitle1" color="text.secondary" gutterBottom sx={{ mb: 2 }}>
               {title}
             </Typography>
-            <Typography variant="h4" fontWeight={700}>
+            <Typography variant="h3" fontWeight={800}>
               {value}
             </Typography>
           </Box>

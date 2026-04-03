@@ -6,6 +6,7 @@ import { CreatePartnerSchema } from '@/app/lib/validations/partner';
 
 import { canMoveToReady } from '@/app/kanban/utils';
 import { PartnerDocStatus } from '@/app/lib/validations/partner';
+import { getSession } from '@/app/lib/auth';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -39,23 +40,34 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             }
         }
 
-        // Logic 2: Guardrail for moving to READY_FOR_DEPLOY
-        if (data.kanbanStage === 'READY_FOR_DEPLOY' && existingPartner.kanbanStage !== 'READY_FOR_DEPLOY') {
-            // Check doc status (use incoming docStatus if provided, else existing)
-            const currentDocStatus = (data.docStatus || existingPartner.docStatus) as PartnerDocStatus;
-
-            if (!canMoveToReady(currentDocStatus)) {
-                return NextResponse.json(
-                    { error: 'Cannot move to Ready for Deploy: Missing required document approvals.' },
-                    { status: 400 }
-                );
-            }
-        }
+        // Guardrail removed as per request 
 
         const partner = await prisma.partner.update({
             where: { id },
             data: data,
         });
+
+        const session = await getSession();
+        if (session && session.id) {
+            const changedFields: string[] = [];
+            for (const key of Object.keys(data)) {
+                if (JSON.stringify(data[key]) !== JSON.stringify((existingPartner as any)[key])) {
+                    changedFields.push(key);
+                }
+            }
+
+            if (changedFields.length > 0) {
+                await prisma.activityLog.create({
+                     data: {
+                         userId: session.id as string,
+                         actionType: 'UPDATE_PARTNER',
+                         entityType: 'partner',
+                         entityId: partner.id,
+                         metadata: { updatedFields: changedFields, details: data }
+                     }
+                 });
+            }
+        }
 
         return NextResponse.json(partner);
     } catch (error) {
@@ -80,6 +92,19 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         await prisma.partner.delete({
             where: { id },
         });
+
+        const session = await getSession();
+        if (session && session.id) {
+            await prisma.activityLog.create({
+                 data: {
+                     userId: session.id as string,
+                     actionType: 'DELETE_PARTNER',
+                     entityType: 'partner',
+                     entityId: id,
+                     metadata: { name: existingPartner.name }
+                 }
+             });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

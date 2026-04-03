@@ -51,7 +51,8 @@ model Partner {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  integrator  String?
+  integratorId   String?  @map("integrator_id")
+  integrator     User?    @relation("PartnerIntegrators", fields: [integratorId], references: [id], onDelete: SetNull)
   
   @@map("partners")
   @@schema("integron")
@@ -161,5 +162,39 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   @@map("users")
+  @@schema("integron")
+
+  todos         Todo[]
+  activityLogs  ActivityLog[]
+  integratedPartners Partner[] @relation("PartnerIntegrators")
+}
+
+model Todo {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  title       String
+  isCompleted Boolean  @default(false)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("todos")
+  @@schema("integron")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  actionType  String   @map("action_type")
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
   @@schema("integron")
 }

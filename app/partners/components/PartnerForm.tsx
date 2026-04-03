@@ -10,6 +10,8 @@ import {
   Typography,
 } from '@mui/material';
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import { CreatePartnerInput } from '@/app/lib/validations/partner';
 
 interface PartnerFormProps {
@@ -40,15 +42,23 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-const AM_OPTIONS = ['Aditya', 'Budi', 'Chandra', 'Dewi', 'Eka'];
+
 
 export default function PartnerForm({ initialData, onSubmit, isSubmitting }: PartnerFormProps) {
   const [formData, setFormData] = useState<CreatePartnerInput>({
     name: initialData?.name || '',
     code: initialData?.code || '',
     status: initialData?.status || 'DRAFT',
-    integrator: initialData?.integrator || '',
+    integratorId: initialData?.integratorId || undefined,
     notes: initialData?.notes || '',
+  });
+
+  const { data: users, isLoading: usersLoading } = useQuery<{id: string, name: string | null, email: string}[]>({
+      queryKey: ['users'],
+      queryFn: async () => {
+          const res = await axios.get('/api/users');
+          return res.data;
+      }
   });
 
   // Sync state when initialData changes (fix for reused dialog)
@@ -58,7 +68,7 @@ export default function PartnerForm({ initialData, onSubmit, isSubmitting }: Par
             name: initialData.name || '',
             code: initialData.code || '',
             status: initialData.status || 'DRAFT',
-            integrator: initialData.integrator || '',
+            integratorId: initialData.integratorId || undefined,
             notes: initialData.notes || '',
         });
     } else {
@@ -67,7 +77,7 @@ export default function PartnerForm({ initialData, onSubmit, isSubmitting }: Par
             name: '',
             code: '',
             status: 'DRAFT',
-            integrator: '',
+            integratorId: undefined,
             notes: '',
         });
     }
@@ -128,14 +138,15 @@ export default function PartnerForm({ initialData, onSubmit, isSubmitting }: Par
               select
               label="Integrator"
               fullWidth
-              value={formData.integrator}
-              onChange={handleSelectChange('integrator')}
-              disabled={isSubmitting}
+              value={formData.integratorId || ''}
+              onChange={handleSelectChange('integratorId')}
+              disabled={isSubmitting || usersLoading}
             >
                 <MenuItem value=""><em>Unassigned</em></MenuItem>
-                {AM_OPTIONS.map(name => (
-                    <MenuItem key={name} value={name}>{name}</MenuItem>
-                ))}
+                {users?.map(user => {
+                    const displayName = user.name || user.email;
+                    return <MenuItem key={user.id} value={user.id}>{displayName}</MenuItem>
+                })}
           </TextField>
           
           <TextField

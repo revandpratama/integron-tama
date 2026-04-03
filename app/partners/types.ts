@@ -17,6 +17,7 @@ export interface Partner {
 
     createdAt?: string | Date;
     updatedAt?: string | Date;
-    integrator?: string | null;
+    integratorId?: string | null;
+    integrator?: { id: string; name: string | null; email: string } | null;
     notes?: string | null;
 }

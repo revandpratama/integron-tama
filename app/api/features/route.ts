@@ -1,6 +1,7 @@
 import { prisma } from '@/app/lib/prisma';
 import { featureSchema } from '@/app/lib/validations/feature';
 import { NextResponse } from 'next/server';
+import { getSession } from '@/app/lib/auth';
 
 export async function GET(request: Request) {
     try {
@@ -79,6 +80,19 @@ export async function POST(request: Request) {
         const feature = await prisma.feature.create({
             data: body,
         });
+
+        const session = await getSession();
+        if (session && session.id) {
+            await prisma.activityLog.create({
+                data: {
+                    userId: session.id as string,
+                    actionType: 'CREATE_FEATURE',
+                    entityType: 'feature',
+                    entityId: feature.id,
+                    metadata: { name: feature.name, category: feature.category }
+                }
+            });
+        }
 
         return NextResponse.json(feature, { status: 201 });
     } catch (error) {

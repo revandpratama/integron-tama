@@ -24,6 +24,7 @@ import ViewKanbanOutlinedIcon from '@mui/icons-material/ViewKanbanOutlined';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import LogoutIcon from '@mui/icons-material/Logout';
+import HistoryIcon from '@mui/icons-material/History';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
@@ -45,8 +46,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const handleLogout = async () => {
       try {
           await axios.post('/api/auth/logout');
-          router.push('/login');
-          router.refresh();
+          window.location.href = '/login';
       } catch (error) {
           console.error('Logout failed:', error);
       }
@@ -60,6 +60,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { label: 'The Rolodex', path: '/people', icon: <ContactsOutlinedIcon /> },
     { label: 'Knowledge Base', path: '/knowledge', icon: <MenuBookIcon /> },
     { label: 'Reminders', path: '/reminders', icon: <NotificationsActiveIcon /> },
+    { label: 'Activity Log', path: '/activity-logs', icon: <HistoryIcon /> },
   ];
 
   return (

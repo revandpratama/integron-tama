@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { CreatePersonSchema } from '@/app/lib/validations/people';
 import { ZodError } from 'zod';
+import { getSession } from '@/app/lib/auth';
 
 export async function GET(request: NextRequest) {
     try {
@@ -74,6 +75,19 @@ export async function POST(request: NextRequest) {
                 features: true,
             }
         });
+
+        const session = await getSession();
+        if (session && session.id) {
+            await prisma.activityLog.create({
+                data: {
+                    userId: session.id as string,
+                    actionType: 'CREATE_PERSON',
+                    entityType: 'people',
+                    entityId: person.id,
+                    metadata: { name: person.name, role: person.role }
+                }
+            });
+        }
 
         return NextResponse.json(person, { status: 201 });
     } catch (error) {

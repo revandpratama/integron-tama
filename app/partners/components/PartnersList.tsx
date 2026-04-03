@@ -11,6 +11,7 @@ import {
   TableSortLabel,
 } from '@mui/material';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { Partner } from '../types';
 import { format } from 'date-fns';
 import { useState } from 'react';
@@ -197,9 +198,12 @@ function PartnerRow({ partner, onEdit, onDelete }: { partner: Partner; onEdit: a
       {/* Integrator / Assignees */}
       <Box sx={{ width: 150, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
            {partner.integrator ? (
-               <Typography variant="caption" fontWeight={600} sx={{ color: '#4b5563' }}>
-                   {partner.integrator}
-               </Typography>
+               <Chip 
+                   size="small" 
+                   icon={<PersonOutlineIcon sx={{ fontSize: '16px !important' }} />} 
+                   label={partner.integrator.name || partner.integrator.email || 'User'} 
+                   sx={{ bgcolor: '#f1f5f9', color: '#475569', fontWeight: 500 }} 
+               />
            ) : (
                <Typography variant="caption" sx={{ color: '#9ca3af', fontStyle: 'italic' }}>Unassigned</Typography>
            )}
