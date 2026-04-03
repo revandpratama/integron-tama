@@ -19,7 +19,8 @@ import {
     Skeleton,
     Paper,
     alpha,
-    TablePagination
+    TablePagination,
+    CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -432,6 +433,7 @@ function PeopleDialog({
                     variant="contained" 
                     onClick={handleSubmit} 
                     disabled={loading || !name || !role} 
+                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
                     sx={{ 
                         bgcolor: 'black', 
                         borderRadius: 2, 

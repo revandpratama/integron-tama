@@ -12,12 +12,14 @@ import {
   Typography,
   IconButton,
   Divider,
+  Avatar,
+  Tooltip,
+  Skeleton,
 } from '@mui/material';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import CategoryIcon from '@mui/icons-material/Category';
 import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined';
 import ViewKanbanOutlinedIcon from '@mui/icons-material/ViewKanbanOutlined';
@@ -27,6 +29,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import HistoryIcon from '@mui/icons-material/History';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 
 import { useState } from 'react';
 import Image from 'next/image';
@@ -42,6 +45,20 @@ interface SidebarProps {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+
+  const { data: meData, isLoading: meLoading } = useQuery<{ user: { id: string; name: string | null; email: string } | null }>({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const res = await axios.get('/api/auth/me');
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 min — user info rarely changes
+  });
+
+  const user = meData?.user;
+  const displayName = user?.name || user?.email || 'User';
+  const displayInitial = displayName.charAt(0).toUpperCase();
+  const displayEmail = user?.email || '';
 
   const handleLogout = async () => {
       try {
@@ -155,9 +172,94 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         })}
       </List>
 
-      {/* Footer / Settings */}
+      {/* Footer / Logout */}
       <Box sx={{ p: 2 }}>
         <Divider sx={{ mb: 2 }} />
+
+        {/* User Profile */}
+        {collapsed ? (
+          <Tooltip title={displayName} placement="right">
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.5 }}>
+              {meLoading ? (
+                <Skeleton variant="circular" width={36} height={36} />
+              ) : (
+                <Avatar
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    bgcolor: '#3b82f6',
+                    color: 'white',
+                    cursor: 'default',
+                  }}
+                >
+                  {displayInitial}
+                </Avatar>
+              )}
+            </Box>
+          </Tooltip>
+        ) : (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              px: 1,
+              py: 1.5,
+              mb: 1,
+              borderRadius: 2,
+              bgcolor: '#f9fafb',
+              border: '1px solid #f3f4f6',
+            }}
+          >
+            {meLoading ? (
+              <Skeleton variant="circular" width={36} height={36} />
+            ) : (
+              <Avatar
+                sx={{
+                  width: 36,
+                  height: 36,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  bgcolor: '#3b82f6',
+                  color: 'white',
+                  flexShrink: 0,
+                }}
+              >
+                {displayInitial}
+              </Avatar>
+            )}
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              {meLoading ? (
+                <>
+                  <Skeleton width={100} height={16} sx={{ mb: 0.5 }} />
+                  <Skeleton width={130} height={13} />
+                </>
+              ) : (
+                <>
+                  <Typography
+                    variant="subtitle2"
+                    fontWeight={700}
+                    noWrap
+                    sx={{ fontSize: 13, color: '#111827', lineHeight: 1.3 }}
+                  >
+                    {user?.name || 'Anonymous'}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{ fontSize: 11, color: '#6b7280', display: 'block' }}
+                  >
+                    {displayEmail}
+                  </Typography>
+                </>
+              )}
+            </Box>
+          </Box>
+        )}
+
+        {/* Logout Button */}
         <ListItemButton
           onClick={handleLogout}
           sx={{

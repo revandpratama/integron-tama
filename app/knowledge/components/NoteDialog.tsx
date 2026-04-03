@@ -13,6 +13,7 @@ import {
   Stack,
   InputAdornment,
   IconButton,
+  CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useState, useEffect } from 'react';
@@ -151,6 +152,7 @@ export default function NoteDialog({
             type="submit"
             variant="contained"
             disabled={isSubmitting}
+            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
             sx={{ bgcolor: '#0f172a' }}
           >
             {isSubmitting ? 'Saving...' : 'Save Note'}

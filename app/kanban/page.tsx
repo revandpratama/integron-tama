@@ -18,7 +18,8 @@ import {
     DialogContent,
     DialogActions,
     Tooltip,
-    Snackbar
+    Snackbar,
+    Skeleton
 } from '@mui/material';
 import { 
     DndContext, 
@@ -179,7 +180,30 @@ export default function KanbanPage() {
         setActiveId(null);
     };
 
-    if (isLoading) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
+    if (isLoading) {
+        return (
+            <Box sx={{ p: 4, height: '100%', overflowX: 'auto', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                        <Typography variant="h4" fontWeight={800} sx={{ color: '#111827' }}>Integration Board</Typography>
+                        <Typography variant="body1" sx={{ color: '#6b7280' }}>Track partner onboarding, issues, and production status.</Typography>
+                    </Box>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 3, flex: 1, minWidth: 1000 }}>
+                    {[1, 2, 3, 4, 5].map(idx => (
+                         <Box key={idx} sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 280 }}>
+                             <Skeleton variant="rounded" height={60} sx={{ mb: 2, borderRadius: 3 }} />
+                             <Box sx={{ flex: 1, bgcolor: '#f3f4f6', borderRadius: 3, p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                 <Skeleton variant="rounded" height={140} sx={{ borderRadius: 2 }} />
+                                 <Skeleton variant="rounded" height={160} sx={{ borderRadius: 2 }} />
+                                 <Skeleton variant="rounded" height={120} sx={{ borderRadius: 2 }} />
+                             </Box>
+                         </Box>
+                    ))}
+                </Box>
+            </Box>
+        );
+    }
     if (error) return <Box sx={{ p: 4 }}><Alert severity="error">Failed to load board</Alert></Box>;
 
     const handleGoLive = (id: string) => {

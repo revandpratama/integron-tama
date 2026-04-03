@@ -14,6 +14,7 @@ import {
   MenuItem,
   Chip,
   InputAdornment,
+  CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
@@ -291,6 +292,7 @@ export default function FeatureDialog({
             variant="contained"
             disabled={isSubmitting}
             disableElevation
+            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
             sx={{ px: 4 }}
           >
             {isSubmitting ? 'Saving...' : 'Save Feature'}

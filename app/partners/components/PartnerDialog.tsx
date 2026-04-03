@@ -10,6 +10,7 @@ import {
   Button,
   Stack,
   alpha,
+  CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PartnerForm from './PartnerForm';
@@ -113,6 +114,7 @@ export default function PartnerDialog({
             disabled={isSubmitting}
             size="large"
             disableElevation
+            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
             sx={{ px: 4 }}
           >
             {isSubmitting ? 'Saving...' : 'Save Partner'}

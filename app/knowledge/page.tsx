@@ -16,6 +16,7 @@ import {
   DialogActions,
   IconButton,
   TablePagination,
+  Skeleton,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -209,8 +210,20 @@ export default function KnowledgePage() {
       {/* Content */}
       <Box sx={{ flex: 1, overflowY: 'auto' }}>
         {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <CircularProgress />
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)',
+              md: 'repeat(3, 1fr)',
+              lg: 'repeat(4, 1fr)',
+              xl: 'repeat(5, 1fr)'
+            },
+            gap: 3 
+          }}>
+             {[1,2,3,4,5,6,7,8,9,10,11,12].map(i => (
+                 <Skeleton key={i} variant="rounded" height={220} sx={{ borderRadius: 3 }} />
+             ))}
           </Box>
         ) : error ? (
           <Alert severity="error">Failed to load knowledge base.</Alert>

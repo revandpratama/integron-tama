@@ -15,10 +15,11 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon,
   Checkbox,
   TextField,
-  Divider
+  Divider,
+  Skeleton,
+  ListItemIcon
 } from '@mui/material';
 import {
   Groups as GroupsIcon,
@@ -137,8 +138,19 @@ export default function DashboardStats() {
 
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" p={4}>
-        <CircularProgress />
+      <Box>
+        <Skeleton width={300} height={40} sx={{ mb: 3 }} />
+        <Grid container spacing={4} sx={{ mb: 6 }}>
+           {[1,2,3,4].map(i => (
+             <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
+                <Skeleton variant="rounded" height={160} />
+             </Grid>
+           ))}
+        </Grid>
+        <Grid container spacing={4} sx={{ minHeight: 500, flexGrow: 1 }}>
+           <Grid size={{ xs: 12, md: 5 }}><Skeleton variant="rounded" height={600} /></Grid>
+           <Grid size={{ xs: 12, md: 7 }}><Skeleton variant="rounded" height={600} /></Grid>
+        </Grid>
       </Box>
     );
   }
@@ -223,9 +235,9 @@ export default function DashboardStats() {
                     type="submit" 
                     variant="contained" 
                     disabled={!newTodo.trim() || addTodoMutation.isPending}
-                    sx={{ minWidth: 'auto', px: 2 }}
+                    sx={{ minWidth: 64, px: 2 }}
                 >
-                  <AddIcon />
+                  {addTodoMutation.isPending ? <CircularProgress size={24} color="inherit" /> : <AddIcon />}
                 </Button>
               </Box>
 
@@ -241,7 +253,7 @@ export default function DashboardStats() {
                            disableGutters
                            secondaryAction={
                                <IconButton edge="end" onClick={() => deleteTodoMutation.mutate(todo.id)} size="small" color="error">
-                                   <DeleteIcon fontSize="small" />
+                                   {deleteTodoMutation.isPending && deleteTodoMutation.variables === todo.id ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon fontSize="small" />}
                                </IconButton>
                            }
                            sx={{ 
@@ -251,14 +263,17 @@ export default function DashboardStats() {
                            }}
                         >
                             <ListItemIcon sx={{ minWidth: 40 }}>
-                                <Checkbox
-                                    edge="start"
-                                    checked={todo.isCompleted}
-                                    tabIndex={-1}
-                                    disableRipple
-                                    onChange={(e) => toggleTodoMutation.mutate({ id: todo.id, isCompleted: e.target.checked })}
-                                    disabled={toggleTodoMutation.isPending && toggleTodoMutation.variables?.id === todo.id}
-                                />
+                                {toggleTodoMutation.isPending && toggleTodoMutation.variables?.id === todo.id ? (
+                                    <CircularProgress size={20} sx={{ m: 1 }} />
+                                ) : (
+                                    <Checkbox
+                                        edge="start"
+                                        checked={todo.isCompleted}
+                                        tabIndex={-1}
+                                        disableRipple
+                                        onChange={(e) => toggleTodoMutation.mutate({ id: todo.id, isCompleted: e.target.checked })}
+                                    />
+                                )}
                             </ListItemIcon>
                             <ListItemText 
                                 primary={todo.title} 

@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Box, Typography, Card, CardContent, IconButton, Button, Chip } from '@mui/material';
+import { Box, Typography, Card, CardContent, IconButton, Button, Chip, CircularProgress } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
@@ -90,12 +90,13 @@ export default function ReminderBanner() {
                         <Button 
                             size="small" 
                             variant="outlined" 
-                            startIcon={<CheckCircleIcon />}
+                            startIcon={completeMutation.isPending && completeMutation.variables === reminder.id ? <CircularProgress size={16} color="inherit" /> : <CheckCircleIcon />}
                             onClick={() => completeMutation.mutate(reminder.id)}
+                            disabled={completeMutation.isPending && completeMutation.variables === reminder.id}
                             fullWidth
                             sx={{ textTransform: 'none', borderRadius: 2 }}
                         >
-                            Mark Done
+                            {completeMutation.isPending && completeMutation.variables === reminder.id ? 'Marking...' : 'Mark Done'}
                         </Button>
                     </CardContent>
                 </Card>
