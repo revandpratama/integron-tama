@@ -48,7 +48,7 @@ export default function ActivityLogPage() {
 
   const [modalData, setModalData] = useState<any>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['activity-logs', paginationModel.page, paginationModel.pageSize, debouncedSearch, actionType, entityType, userId, broadSearch],
     queryFn: async () => {
       const res = await axios.get('/api/logs', {
@@ -246,6 +246,7 @@ export default function ActivityLogPage() {
                 />
             </Box>
             <Button type="submit" variant="contained" sx={{ px: 4, borderRadius: 2, fontWeight: 600, boxShadow: 'none', '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' } }}>Apply Filters</Button>
+            <Button variant="outlined" onClick={() => refetch()} sx={{ px: 3, borderRadius: 2, fontWeight: 600 }}>Refresh</Button>
         </Box>
       </Card>
 
