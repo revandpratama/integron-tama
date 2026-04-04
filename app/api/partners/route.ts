@@ -4,6 +4,8 @@ import { CreatePartnerSchema } from '@/app/lib/validations/partner';
 import { ZodError } from 'zod';
 import { getSession } from '@/app/lib/auth';
 
+const FEATURE_SELECT = { select: { id: true, name: true, category: true } };
+
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -29,14 +31,15 @@ export async function GET(request: NextRequest) {
             const partners = await prisma.partner.findMany({
                 where: whereClause,
                 orderBy: { updatedAt: 'desc' },
-                include: { integrator: { select: { id: true, name: true, email: true } } }
+                include: {
+                    integrator: { select: { id: true, name: true, email: true } },
+                    features: FEATURE_SELECT,
+                }
             });
             return NextResponse.json(partners);
         }
 
-        if (status) { // Client might pass 'All' implicitly if logic isn't clean, but let's assume 'All' is handled by not sending param or checking here
-            // Using logic from page.tsx: "if (statusFilter !== 'All') params.append('status', statusFilter);"
-            // So here we trust `status` is valid filter
+        if (status) {
             whereClause.status = status as any;
         }
 
@@ -53,14 +56,16 @@ export async function GET(request: NextRequest) {
             ];
         }
 
-        // Pagination for Partner Management
         const [partners, total] = await Promise.all([
             prisma.partner.findMany({
                 where: whereClause,
                 orderBy: { [sortBy]: sortOrder },
                 skip: (page - 1) * limit,
                 take: limit,
-                include: { integrator: { select: { id: true, name: true, email: true } } }
+                include: {
+                    integrator: { select: { id: true, name: true, email: true } },
+                    features: FEATURE_SELECT,
+                }
             }),
             prisma.partner.count({ where: whereClause })
         ]);
@@ -88,7 +93,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const validatedData = CreatePartnerSchema.parse(body);
 
-        const partnerData = validatedData;
+        const { featureIds, ...partnerData } = validatedData;
 
         const partner = await prisma.partner.create({
             data: {
@@ -99,7 +104,14 @@ export async function POST(request: NextRequest) {
                 docStatus: partnerData.docStatus as any,
                 notes: partnerData.notes,
                 integratorId: partnerData.integratorId,
+                ...(featureIds && featureIds.length > 0 && {
+                    features: { connect: featureIds.map(id => ({ id })) }
+                }),
             },
+            include: {
+                integrator: { select: { id: true, name: true, email: true } },
+                features: FEATURE_SELECT,
+            }
         });
 
         const session = await getSession();

@@ -20,4 +20,5 @@ export interface Partner {
     integratorId?: string | null;
     integrator?: { id: string; name: string | null; email: string } | null;
     notes?: string | null;
+    features?: { id: string; name: string; category: string }[];
 }

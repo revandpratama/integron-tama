@@ -58,6 +58,7 @@ model Partner {
   @@schema("integron")
   
   people    Person[]
+  features  Feature[]  // many-to-many with Feature
 }
 
 enum FeatureCategory {
@@ -80,6 +81,7 @@ model Feature {
   // Relationships
   contactPerson   Person? @relation(fields: [contactPersonId], references: [id])
   contactPersonId String?
+  partners        Partner[]  // many-to-many with Partner
   
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt

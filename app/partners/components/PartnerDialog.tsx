@@ -20,7 +20,7 @@ interface PartnerDialogProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: CreatePartnerInput) => void;
-  initialData?: Partial<CreatePartnerInput>;
+  initialData?: Partial<CreatePartnerInput> & { features?: { id: string; name: string; category: string }[] };
   isSubmitting: boolean;
   title: string;
 }
@@ -44,7 +44,7 @@ export default function PartnerDialog({
       onClose={onClose}
       PaperProps={{
         sx: {
-          width: isMobile ? '100%' : 600,
+          width: isMobile ? '100%' : 640,
           boxShadow: '-4px 0 24px rgba(0,0,0,0.1)',
           display: 'flex',
           flexDirection: 'column',

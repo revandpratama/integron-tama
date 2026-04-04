@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
         const entityType = searchParams.get('entityType') || '';
         const userId = searchParams.get('userId') || '';
         const broadSearch = searchParams.get('broadSearch') === 'true';
+        const startDate = searchParams.get('startDate') || '';
+        const endDate = searchParams.get('endDate') || '';
 
         const whereClause: any = {};
 
@@ -30,6 +32,16 @@ export async function GET(request: NextRequest) {
 
         if (userId) {
             whereClause.userId = userId;
+        }
+
+        if (startDate || endDate) {
+            whereClause.createdAt = {};
+            if (startDate) {
+                whereClause.createdAt.gte = new Date(startDate);
+            }
+            if (endDate) {
+                whereClause.createdAt.lte = new Date(endDate);
+            }
         }
 
         let matchingIds: string[] = [];

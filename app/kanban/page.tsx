@@ -74,7 +74,9 @@ export default function KanbanPage() {
         queryFn: async () => {
             const res = await axios.get('/api/partners?activeKanban=true');
             return res.data;
-        }
+        },
+        staleTime: 0,
+        refetchOnMount: true,
     });
 
     const updatePartnerMutation = useMutation({

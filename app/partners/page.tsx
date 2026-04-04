@@ -4,11 +4,8 @@ import {
   Box,
   Typography,
   Button,
-  Tabs,
-  Tab,
   TextField,
   Divider,
-  IconButton,
   Alert,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -69,14 +66,18 @@ export default function PartnersPage() {
     setOrderBy(property);
   };
   
-  // Mutations (Create/Update/Delete)
+  const invalidatePartners = () => {
+    queryClient.invalidateQueries({ queryKey: ['partners'] });
+  };
+
+  // Mutations (Create/Update/Delete/Start Onboarding)
   const createMutation = useMutation({
     mutationFn: async (data: CreatePartnerInput) => {
       const response = await axios.post('/api/partners', data);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['partners'] });
+      invalidatePartners();
       setDialogOpen(false);
       setEditingPartner(null);
     },
@@ -88,7 +89,7 @@ export default function PartnersPage() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['partners'] });
+      invalidatePartners();
       setDialogOpen(false);
       setEditingPartner(null);
     },
@@ -99,7 +100,17 @@ export default function PartnersPage() {
       await axios.delete(`/api/partners/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['partners'] });
+      invalidatePartners();
+    },
+  });
+
+  const startOnboardingMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await axios.put(`/api/partners/${id}`, { status: 'ONBOARDING' });
+      return response.data;
+    },
+    onSuccess: () => {
+      invalidatePartners();
     },
   });
 
@@ -116,6 +127,12 @@ export default function PartnersPage() {
   const handleDeleteClick = async (id: string) => {
     if (window.confirm('Delete this partner?')) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleStartOnboarding = (id: string) => {
+    if (window.confirm('Start onboarding for this partner? This will move them to the Integration Board.')) {
+      startOnboardingMutation.mutate(id);
     }
   };
 
@@ -233,6 +250,7 @@ export default function PartnersPage() {
           partners={partners}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
+          onStartOnboarding={handleStartOnboarding}
           loading={isLoading}
           
           page={page}
@@ -259,11 +277,15 @@ export default function PartnersPage() {
         }}
         onSubmit={handleSubmit}
         initialData={editingPartner ? {
-            ...editingPartner,
-            integrator: editingPartner.integrator || undefined,
+            name: editingPartner.name,
+            code: editingPartner.code,
+            status: editingPartner.status,
+            integratorId: editingPartner.integratorId || undefined,
             notes: editingPartner.notes || undefined,
             kanbanStage: editingPartner.kanbanStage || undefined,
             docStatus: editingPartner.docStatus || undefined,
+            featureIds: editingPartner.features?.map(f => f.id) || [],
+            features: editingPartner.features || [],
         } : undefined}
         isSubmitting={isSubmitting}
         title={editingPartner ? 'Edit Partner' : 'New Partner'}

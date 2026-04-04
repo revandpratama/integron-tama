@@ -33,6 +33,8 @@ export default function ActivityLogPage() {
   const [entityType, setEntityType] = useState('');
   const [userId, setUserId] = useState('');
   const [broadSearch, setBroadSearch] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   // fetch users for dropdown
   const { data: users } = useQuery<{id: string, name: string | null, email: string}[]>({
@@ -49,7 +51,7 @@ export default function ActivityLogPage() {
   const [modalData, setModalData] = useState<any>(null);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['activity-logs', paginationModel.page, paginationModel.pageSize, debouncedSearch, actionType, entityType, userId, broadSearch],
+    queryKey: ['activity-logs', paginationModel.page, paginationModel.pageSize, debouncedSearch, actionType, entityType, userId, broadSearch, startDate, endDate],
     queryFn: async () => {
       const res = await axios.get('/api/logs', {
         params: {
@@ -60,11 +62,15 @@ export default function ActivityLogPage() {
           entityType,
           userId,
           broadSearch,
+          startDate,
+          endDate,
         }
       });
       return res.data; // { data: [...], total: number }
     },
     placeholderData: (prev) => prev,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const columns: GridColDef[] = [
@@ -239,6 +245,24 @@ export default function ActivityLogPage() {
                      <MenuItem key={u.id} value={u.id}>{u.name || u.email}</MenuItem>
                 ))}
             </TextField>
+            <TextField 
+                label="Start Date"
+                type="datetime-local"
+                size="small"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setPaginationModel(prev => ({ ...prev, page: 0 })); }}
+                slotProps={{ inputLabel: { shrink: true } }}
+                sx={{ minWidth: 200 }}
+            />
+            <TextField 
+                label="End Date"
+                type="datetime-local"
+                size="small"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setPaginationModel(prev => ({ ...prev, page: 0 })); }}
+                slotProps={{ inputLabel: { shrink: true } }}
+                sx={{ minWidth: 200 }}
+            />
             <Box display="flex" alignItems="center" pl={1} mr="auto">
                 <FormControlLabel 
                     control={<Checkbox checked={broadSearch} onChange={(e) => { setBroadSearch(e.target.checked); setPaginationModel(prev => ({ ...prev, page: 0 })); }} size="small" />} 

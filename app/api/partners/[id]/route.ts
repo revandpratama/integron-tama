@@ -8,6 +8,8 @@ import { canMoveToReady } from '@/app/kanban/utils';
 import { PartnerDocStatus } from '@/app/lib/validations/partner';
 import { getSession } from '@/app/lib/auth';
 
+const FEATURE_SELECT = { select: { id: true, name: true, category: true } };
+
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
@@ -24,7 +26,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             );
         }
 
-        const data: any = result.data;
+        const { featureIds, ...restData } = result.data;
+        const data: any = restData;
 
         // Fetch existing partner for transition logic
         const existingPartner = await prisma.partner.findUnique({ where: { id } });
@@ -40,21 +43,30 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             }
         }
 
-        // Guardrail removed as per request 
-
         const partner = await prisma.partner.update({
             where: { id },
-            data: data,
+            data: {
+                ...data,
+                // If featureIds is explicitly passed (even empty array), replace the set
+                ...(featureIds !== undefined && {
+                    features: { set: featureIds.map(fid => ({ id: fid })) }
+                }),
+            },
+            include: {
+                integrator: { select: { id: true, name: true, email: true } },
+                features: FEATURE_SELECT,
+            }
         });
 
         const session = await getSession();
         if (session && session.id) {
             const changedFields: string[] = [];
-            for (const key of Object.keys(data)) {
-                if (JSON.stringify(data[key]) !== JSON.stringify((existingPartner as any)[key])) {
+            for (const key of Object.keys(restData)) {
+                if (JSON.stringify((restData as any)[key]) !== JSON.stringify((existingPartner as any)[key])) {
                     changedFields.push(key);
                 }
             }
+            if (featureIds !== undefined) changedFields.push('features');
 
             if (changedFields.length > 0) {
                 await prisma.activityLog.create({
@@ -63,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                          actionType: 'UPDATE_PARTNER',
                          entityType: 'partner',
                          entityId: partner.id,
-                         metadata: { updatedFields: changedFields, details: data }
+                         metadata: { updatedFields: changedFields, details: restData }
                      }
                  });
             }

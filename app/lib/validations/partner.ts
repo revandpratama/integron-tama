@@ -19,6 +19,7 @@ export const CreatePartnerSchema = z.object({
 
     integratorId: z.string().optional(),
     notes: z.string().optional(),
+    featureIds: z.array(z.string()).optional(),
 });
 
 export const UpdatePartnerSchema = CreatePartnerSchema.partial().extend({
