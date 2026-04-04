@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import FeaturesList from './components/FeaturesList';
 import FeatureDialog from './components/FeatureDialog';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { CreateFeatureInput, Feature } from '@/app/lib/validations/feature';
 import { useDebounce } from '@/app/lib/hooks/useDebounce';
 
@@ -41,6 +42,15 @@ export default function FeaturesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    confirmText: 'Confirm',
+    severity: 'primary' as 'primary' | 'error' | 'warning',
+  });
 
   const queryClient = useQueryClient();
 
@@ -112,9 +122,14 @@ export default function FeaturesPage() {
   };
 
   const handleDeleteClick = async (id: string) => {
-    if (window.confirm('Delete this feature?')) {
-      deleteMutation.mutate(id);
-    }
+    setConfirmConfig({
+      title: 'Delete Feature',
+      message: 'Are you sure you want to delete this feature? This will remove it from all assigned partners.',
+      onConfirm: () => deleteMutation.mutate(id),
+      confirmText: 'Delete',
+      severity: 'error'
+    });
+    setConfirmOpen(true);
   };
 
   const handleNoteUpdate = (feature: Feature, newNotes: string) => {
@@ -275,6 +290,16 @@ export default function FeaturesPage() {
         } : undefined}
         isSubmitting={isSubmitting}
         title={editingFeature ? 'Edit Feature' : 'New Feature'}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmOpen(false)}
+        confirmText={confirmConfig.confirmText}
+        severity={confirmConfig.severity}
       />
     </Box>
   );

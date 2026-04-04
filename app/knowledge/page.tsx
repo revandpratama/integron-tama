@@ -30,6 +30,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { KnowledgeNote, CreateNoteInput } from './types';
 import NoteDialog from './components/NoteDialog';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useDebounce } from '@/app/lib/hooks/useDebounce';
 import { format } from 'date-fns';
 
@@ -54,6 +55,15 @@ export default function KnowledgePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<KnowledgeNote | null>(null);
   const [viewNote, setViewNote] = useState<KnowledgeNote | null>(null);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    confirmText: 'Confirm',
+    severity: 'primary' as 'primary' | 'error' | 'warning',
+  });
 
   const queryClient = useQueryClient();
 
@@ -132,9 +142,14 @@ export default function KnowledgePage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Delete this note?')) {
-        deleteMutation.mutate(id);
-    }
+    setConfirmConfig({
+      title: 'Delete Note',
+      message: 'Are you sure you want to delete this note? This action cannot be undone.',
+      onConfirm: () => deleteMutation.mutate(id),
+      confirmText: 'Delete',
+      severity: 'error'
+    });
+    setConfirmOpen(true);
   };
 
   const handleEdit = (note: KnowledgeNote) => {
@@ -371,6 +386,16 @@ export default function KnowledgePage() {
               </>
           )}
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmOpen(false)}
+        confirmText={confirmConfig.confirmText}
+        severity={confirmConfig.severity}
+      />
     </Box>
   );
 }

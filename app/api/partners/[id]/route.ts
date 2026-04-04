@@ -37,10 +37,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
         // Logic 1: DRAFT -> ONBOARDING trigger
         if (existingPartner.status === 'DRAFT' && data.status === 'ONBOARDING') {
-            if (!data.kanbanStage) {
-                // Automatically set to first stage if not provided
-                data.kanbanStage = 'AWAITING_KICKOFF';
+            if (!data.boardStage) {
+                data.boardStage = 'INITIATION';
             }
+        }
+        
+        // Logic 2: DEPLOYED dragging changes status to LIVE automatically
+        if (data.boardStage === 'DEPLOYED' && existingPartner.status !== 'LIVE') {
+            data.status = 'LIVE';
         }
 
         const partner = await prisma.partner.update({

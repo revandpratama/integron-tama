@@ -22,21 +22,31 @@ export async function GET(request: NextRequest) {
 
         if (activeKanban) {
             whereClause = {
-                OR: [
-                    { status: 'ONBOARDING' },
-                    { status: 'MAINTENANCE' }
-                ]
+                status: { not: 'DRAFT' },
+                boardStage: { not: 'ARCHIVED' }
             };
 
             const partners = await prisma.partner.findMany({
                 where: whereClause,
-                orderBy: { updatedAt: 'desc' },
+                orderBy: [
+                    { boardStage: 'asc' },
+                    { kanbanOrder: 'asc' },
+                    { updatedAt: 'desc' }
+                ],
                 include: {
                     integrator: { select: { id: true, name: true, email: true } },
                     features: FEATURE_SELECT,
                 }
             });
-            return NextResponse.json(partners);
+
+            // Handle Done Limitation: max 30 days old AND max 20 cards
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+            const activePartners = partners.filter(p => p.boardStage !== 'DONE');
+            const donePartners = partners
+                .filter(p => p.boardStage === 'DONE' && new Date(p.updatedAt) > thirtyDaysAgo)
+                .slice(0, 20);
+            
+            return NextResponse.json([...activePartners, ...donePartners]);
         }
 
         if (status) {
@@ -100,10 +110,14 @@ export async function POST(request: NextRequest) {
                 name: partnerData.name,
                 code: partnerData.code,
                 status: partnerData.status as any,
-                kanbanStage: partnerData.kanbanStage as any,
+                boardStage: partnerData.boardStage as any || 'INITIATION',
+                integrationType: partnerData.integrationType as any || 'INBOUND',
+                complexity: partnerData.complexity as any || 'MEDIUM',
+                boardTasks: partnerData.boardTasks || {},
                 docStatus: partnerData.docStatus as any,
                 notes: partnerData.notes,
                 integratorId: partnerData.integratorId,
+                kanbanOrder: partnerData.kanbanOrder || 0,
                 ...(featureIds && featureIds.length > 0 && {
                     features: { connect: featureIds.map(id => ({ id })) }
                 }),

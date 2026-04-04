@@ -25,12 +25,44 @@ enum PartnerStatus {
   @@schema("integron")
 }
 
-enum KanbanStage {
-  AWAITING_KICKOFF
-  SANDBOX_ACTIVE
-  SIT_VERIFICATION
-  REVISION_PENDING
-  READY_FOR_DEPLOY
+enum BoardStage {
+  INITIATION
+  KICKOFF_SETUP
+  DEV_CONFIG
+  TESTING_VALIDATION
+  QA_REVIEW
+  PARTNER_REVISION
+  BLOCKED_WAITING
+  PRE_PRODUCTION
+  PRODUCTION_READY
+  DEPLOYED
+  POST_DEPLOYMENT
+  DONE
+  ARCHIVED
+
+  @@schema("integron")
+}
+
+enum IntegrationType {
+  INBOUND
+  OUTBOUND
+  HYBRID
+
+  @@schema("integron")
+}
+
+enum Complexity {
+  LOW
+  MEDIUM
+  HARD
+
+  @@schema("integron")
+}
+
+enum TrafficLight {
+  HEALTHY
+  DEGRADED
+  CRITICAL
 
   @@schema("integron")
 }
@@ -39,17 +71,28 @@ model Partner {
   id          String   @id @default(cuid())
   name        String
   code        String   @unique
-  status      PartnerStatus
-  kanbanStage KanbanStage?
+  status            PartnerStatus
+  boardStage        BoardStage?      @default(INITIATION)
+  integrationType   IntegrationType  @default(INBOUND)
+  complexity        Complexity       @default(MEDIUM)
+  trafficLight      TrafficLight     @default(HEALTHY)
+  
+  // JSON array of objects: { status: TrafficLight, comment: string, timestamp: string }
+  trafficComments   Json             @default("[]")
+  
+  // Storing the checked states of specific board tasks.
+  // Example: {"INITIATION": {"Email Partner Documentation": true}}
+  boardTasks        Json             @default("{}")
   
   // Doc Status tracking (JSON)
-  // expected structure: { sit: 'PENDING', reconcile: 'PENDING', devsite: 'PENDING' }
-  docStatus   Json     @default("{\"sit\": \"PENDING\", \"reconcile\": \"PENDING\", \"devsite\": \"PENDING\"}")
+  docStatus         Json             @default("{\"sit\": \"PENDING\", \"reconcile\": \"PENDING\", \"devsite\": \"PENDING\"}")
   
-  notes       String?  // [NEW] Added for Kanban notes
+  notes             String?  // [NEW] Added for Kanban notes
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  kanbanOrder Int      @default(0) // [NEW] Persist manual card ordering in columns
   
   integratorId   String?  @map("integrator_id")
   integrator     User?    @relation("PartnerIntegrators", fields: [integratorId], references: [id], onDelete: SetNull)

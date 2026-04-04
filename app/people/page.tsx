@@ -31,6 +31,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import NoteOutlinedIcon from '@mui/icons-material/NoteOutlined';
 import axios from 'axios';
 import { useDebounce } from '@/app/lib/hooks/useDebounce';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 
 interface Person {
     id: string;
@@ -58,6 +59,15 @@ export default function PeoplePage() {
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingPerson, setEditingPerson] = useState<Person | undefined>(undefined);
+    
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmConfig, setConfirmConfig] = useState({
+        title: '',
+        message: '',
+        onConfirm: () => {},
+        confirmText: 'Confirm',
+        severity: 'primary' as 'primary' | 'error' | 'warning',
+    });
     
     // Pagination State
     const [page, setPage] = useState(0); // MUI is 0-indexed
@@ -103,9 +113,14 @@ export default function PeoplePage() {
     };
 
     const handleDelete = (id: string) => {
-        if (window.confirm('Are you sure you want to delete this contact?')) {
-            deleteMutation.mutate(id);
-        }
+        setConfirmConfig({
+            title: 'Delete Contact',
+            message: 'Are you sure you want to delete this contact? This will remove them from the rolodex.',
+            onConfirm: () => deleteMutation.mutate(id),
+            confirmText: 'Delete',
+            severity: 'error'
+        });
+        setConfirmOpen(true);
     };
 
     const handlePageChange = (event: unknown, newPage: number) => {
@@ -239,6 +254,16 @@ export default function PeoplePage() {
                     sx={{ borderTop: '1px solid #e5e7eb' }}
                 />
             </Paper>
+
+            <ConfirmDialog
+                open={confirmOpen}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                onConfirm={confirmConfig.onConfirm}
+                onClose={() => setConfirmOpen(false)}
+                confirmText={confirmConfig.confirmText}
+                severity={confirmConfig.severity}
+            />
         </Box>
     );
 }

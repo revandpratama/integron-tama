@@ -6,10 +6,15 @@ import {
   IconButton,
   Chip,
   Menu,
+  Select,
   MenuItem,
+  FormControl,
+  InputLabel,
+  Divider,
   TablePagination,
   TableSortLabel,
   Tooltip,
+  Button,
 } from '@mui/material';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
@@ -132,7 +137,7 @@ export default function PartnersList({
                 </TableSortLabel>
             </Box>
 
-            <Box sx={{ width: 32 }} /> {/* Action placeholder */}
+            <Box sx={{ width: 180 }} /> {/* Action placeholder */}
         </Box>
 
         {/* List Content */}
@@ -263,27 +268,60 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
       </Box>
 
       {/* Actions */}
-      <Box className="row-actions" sx={{ opacity: 0, width: 32, display: 'flex', justifyContent: 'center' }}>
-        <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
-          <MoreHorizIcon sx={{ fontSize: 16, color: '#9ca3af' }} />
+      <Box 
+        className="row-actions" 
+        sx={{ 
+            opacity: partner.status === 'DRAFT' ? 1 : 0, 
+            width: 180, 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            alignItems: 'center', 
+            mr: 1, 
+            gap: 1 
+        }}
+      >
+        {partner.status === 'DRAFT' && (
+            <Button 
+                variant="contained" 
+                size="small" 
+                color="primary"
+                startIcon={<PlayArrowIcon sx={{ fontSize: 14 }} />}
+                onClick={(e) => { e.stopPropagation(); onStartOnboarding(partner.id); }}
+                sx={{ 
+                    textTransform: 'none', 
+                    borderRadius: '100px', 
+                    height: 28, 
+                    fontSize: 11, 
+                    fontWeight: 700, 
+                    boxShadow: '0 1px 2px rgba(59, 130, 246, 0.3)',
+                    px: 1.5,
+                    bgcolor: '#3b82f6',
+                    '&:hover': { bgcolor: '#2563eb', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.4)' }
+                }}
+            >
+                Start Onboarding
+            </Button>
+        )}
+        <IconButton 
+            size="small" 
+            onClick={(e) => { e.stopPropagation(); setAnchorEl(e.currentTarget); }}
+            sx={{ 
+                bgcolor: partner.status === 'DRAFT' ? 'transparent' : 'transparent',
+                '&:hover': { bgcolor: '#f3f4f6' }
+            }}
+        >
+          <MoreHorizIcon sx={{ fontSize: 18, color: '#9ca3af' }} />
         </IconButton>
         <Menu
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={() => setAnchorEl(null)}
-            PaperProps={{ sx: { boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', borderRadius: 2 } }}
+            onClick={(e) => e.stopPropagation()}
+            PaperProps={{ sx: { boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.1)', borderRadius: 2, mt: 0.5 } }}
         >
-            {partner.status === 'DRAFT' && (
-                <MenuItem 
-                    onClick={() => { onStartOnboarding(partner.id); setAnchorEl(null); }} 
-                    sx={{ fontSize: 13, color: '#8b5cf6', fontWeight: 600, gap: 1 }}
-                >
-                    <PlayArrowIcon sx={{ fontSize: 16 }} />
-                    Start Onboarding
-                </MenuItem>
-            )}
-            <MenuItem onClick={() => { onEdit(partner); setAnchorEl(null); }} sx={{ fontSize: 13 }}>Edit</MenuItem>
-            <MenuItem onClick={() => { onDelete(partner.id); setAnchorEl(null); }} sx={{ fontSize: 13, color: 'error.main' }}>Delete</MenuItem>
+            <MenuItem onClick={() => { onEdit(partner); setAnchorEl(null); }} sx={{ fontSize: 13, py: 1, px: 2 }}>Edit Details</MenuItem>
+            <Divider sx={{ my: 0.5 }} />
+            <MenuItem onClick={() => { onDelete(partner.id); setAnchorEl(null); }} sx={{ fontSize: 13, py: 1, px: 2, color: 'error.main' }}>Delete Partner</MenuItem>
         </Menu>
       </Box>
     </Box>

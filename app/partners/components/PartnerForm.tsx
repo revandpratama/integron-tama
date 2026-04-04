@@ -194,7 +194,7 @@ export default function PartnerForm({ initialData, onSubmit, isSubmitting }: Par
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => {
                   const colors = CATEGORY_COLOR[option.category] || { bg: '#f3f4f6', color: '#374151' };
-                  const tagProps = getTagProps({ index });
+                  const { key, ...tagProps } = getTagProps({ index });
                   return (
                     <Chip
                       key={option.id}

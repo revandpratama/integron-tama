@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import PartnersList from './components/PartnersList';
 import PartnerDialog from './components/PartnerDialog';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { CreatePartnerInput } from '@/app/lib/validations/partner';
 import { Partner } from './types';
 import { useDebounce } from '@/app/lib/hooks/useDebounce';
@@ -34,6 +35,15 @@ export default function PartnersPage() {
   const [limit, setLimit] = useState(10);
   const [orderBy, setOrderBy] = useState('updatedAt');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    confirmText: 'Confirm',
+    severity: 'primary' as 'primary' | 'error' | 'warning',
+  });
 
   const queryClient = useQueryClient();
 
@@ -125,15 +135,25 @@ export default function PartnersPage() {
   };
 
   const handleDeleteClick = async (id: string) => {
-    if (window.confirm('Delete this partner?')) {
-      deleteMutation.mutate(id);
-    }
+    setConfirmConfig({
+      title: 'Delete Partner',
+      message: 'Are you sure you want to delete this partner? This action cannot be undone.',
+      onConfirm: () => deleteMutation.mutate(id),
+      confirmText: 'Delete',
+      severity: 'error'
+    });
+    setConfirmOpen(true);
   };
 
   const handleStartOnboarding = (id: string) => {
-    if (window.confirm('Start onboarding for this partner? This will move them to the Integration Board.')) {
-      startOnboardingMutation.mutate(id);
-    }
+    setConfirmConfig({
+      title: 'Start Onboarding',
+      message: 'This will move the partner to the Integration Board. Continue?',
+      onConfirm: () => startOnboardingMutation.mutate(id),
+      confirmText: 'Initiate',
+      severity: 'primary'
+    });
+    setConfirmOpen(true);
   };
 
   const handleSubmit = (data: CreatePartnerInput) => {
@@ -252,7 +272,6 @@ export default function PartnersPage() {
           onDelete={handleDeleteClick}
           onStartOnboarding={handleStartOnboarding}
           loading={isLoading}
-          
           page={page}
           count={meta.total}
           rowsPerPage={limit}
@@ -261,14 +280,13 @@ export default function PartnersPage() {
               setLimit(parseInt(e.target.value, 10));
               setPage(1);
           }}
-          
           sortBy={orderBy}
           sortOrder={order}
           onSort={handleSort}
         />
       </Box>
 
-      {/* Drawer */}
+      {/* Popups */}
       <PartnerDialog
         open={dialogOpen}
         onClose={() => {
@@ -282,13 +300,23 @@ export default function PartnersPage() {
             status: editingPartner.status,
             integratorId: editingPartner.integratorId || undefined,
             notes: editingPartner.notes || undefined,
-            kanbanStage: editingPartner.kanbanStage || undefined,
+            boardStage: editingPartner.boardStage || editingPartner.kanbanStage || undefined,
             docStatus: editingPartner.docStatus || undefined,
             featureIds: editingPartner.features?.map(f => f.id) || [],
             features: editingPartner.features || [],
         } : undefined}
         isSubmitting={isSubmitting}
         title={editingPartner ? 'Edit Partner' : 'New Partner'}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmOpen(false)}
+        confirmText={confirmConfig.confirmText}
+        severity={confirmConfig.severity}
       />
     </Box>
   );
