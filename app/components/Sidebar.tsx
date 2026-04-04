@@ -27,6 +27,7 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import LogoutIcon from '@mui/icons-material/Logout';
 import HistoryIcon from '@mui/icons-material/History';
+import QrCode2Icon from '@mui/icons-material/QrCode2';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -78,6 +79,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { label: 'Knowledge Base', path: '/knowledge', icon: <MenuBookIcon /> },
     { label: 'Reminders', path: '/reminders', icon: <NotificationsActiveIcon /> },
     { label: 'Activity Log', path: '/activity-logs', icon: <HistoryIcon /> },
+    { label: 'QRIS Pay', path: '/qris', icon: <QrCode2Icon /> },
   ];
 
   return (
