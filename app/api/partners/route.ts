@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
         let whereClause: any = {};
 
         if (activeKanban) {
+            const showAllDone = searchParams.get('showAllDone') === 'true';
+
             whereClause = {
                 status: { not: 'DRAFT' },
                 boardStage: { not: 'ARCHIVED' }
@@ -40,13 +42,16 @@ export async function GET(request: NextRequest) {
             });
 
             // Handle Done Limitation: max 30 days old AND max 20 cards
+            // Unless showAllDone is true
             const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
             const activePartners = partners.filter(p => p.boardStage !== 'DONE');
-            const donePartners = partners
-                .filter(p => p.boardStage === 'DONE' && new Date(p.updatedAt) > thirtyDaysAgo)
-                .slice(0, 20);
+            const donePartners = partners.filter(p => p.boardStage === 'DONE');
             
-            return NextResponse.json([...activePartners, ...donePartners]);
+            const filteredDone = showAllDone 
+                ? donePartners 
+                : donePartners.filter(p => new Date(p.updatedAt) > thirtyDaysAgo).slice(0, 20);
+            
+            return NextResponse.json([...activePartners, ...filteredDone]);
         }
 
         if (status) {

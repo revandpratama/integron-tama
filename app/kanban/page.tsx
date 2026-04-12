@@ -93,11 +93,13 @@ export const DICT = {
         prodReady: 'Production Ready',
         prodReadyDesc: 'Awaiting deployment by OSO Team.',
         deployed: 'Deployed',
-        deployedDesc: 'Partner is live. Status is automatically updated to LIVE.',
+        deployedDesc: 'Partner is live. Status automatically updated to LIVE.',
         postDeploy: 'Post-Deployment',
         postDeployDesc: 'ASPI compliance, incident monitoring, and initial traffic checks.',
         done: 'Done',
-        doneDesc: 'Completed active management. Shows cards updated within last 30 days (max 20).'
+        doneDesc: 'Completed active management.',
+        showAll: 'Show All',
+        showRecent: 'Show Recent'
     },
     id: {
         boardTitle: 'Papan Integrasi',
@@ -155,13 +157,15 @@ export const DICT = {
         preProd: 'Pra-Produksi',
         preProdDesc: 'Sesi tabletop dan pengaturan atribut produksi.',
         prodReady: 'Siap Produksi',
-        prodReadyDesc: 'Menunggu penyebaran oleh Tim OSO.',
-        deployed: 'Disebarkan',
+        prodReadyDesc: 'Menunggu deploy oleh Tim OSO.',
+        deployed: 'Deployed',
         deployedDesc: 'Mitra sudah live. Status secara otomatis diperbarui ke LIVE.',
-        postDeploy: 'Pasca-Penyebaran',
+        postDeploy: 'Pasca-Deploy',
         postDeployDesc: 'Kepatuhan ASPI, pemantauan insiden, dan pemeriksaan lalu lintas awal.',
         done: 'Selesai',
-        doneDesc: 'Manajemen aktif selesai. Menampilkan kartu yang diperbarui (maks 20).'
+        doneDesc: 'Integrasi aktif selesai.',
+        showAll: 'Tampilkan Semua',
+        showRecent: 'Tampilkan Terbaru'
     }
 };
 
@@ -224,6 +228,7 @@ function KanbanContent({ lang, setLang }: { lang: 'en' | 'id', setLang: (l: 'en'
     const [filterIntegrator, setFilterIntegrator] = useState<string>(t.all);
     const [defaultSet, setDefaultSet] = useState(false);
     const [localPartners, setLocalPartners] = useState<Partner[]>([]);
+    const [showAllDone, setShowAllDone] = useState(false);
 
     // Persist filter
     useEffect(() => {
@@ -256,9 +261,9 @@ function KanbanContent({ lang, setLang }: { lang: 'en' | 'id', setLang: (l: 'en'
     });
 
     const { data: partners, isLoading, error } = useQuery<Partner[]>({
-        queryKey: ['partners', 'kanban'],
+        queryKey: ['partners', 'kanban', showAllDone],
         queryFn: async () => {
-            const res = await axios.get('/api/partners?activeKanban=true');
+            const res = await axios.get(`/api/partners?activeKanban=true&showAllDone=${showAllDone}`);
             return res.data;
         },
         staleTime: 5000, // Slightly longer stale time for manual control
@@ -645,6 +650,8 @@ function KanbanContent({ lang, setLang }: { lang: 'en' | 'id', setLang: (l: 'en'
                             onCardClick={(p) => setDetailDialog(p)}
                             toggleTask={toggleTask}
                             onUpdatePartner={(id: string, data: Partial<Partner>) => updatePartnerMutation.mutate({ id, data })}
+                            showAllDone={showAllDone}
+                            onToggleAllDone={col.id === 'DONE' ? () => setShowAllDone(!showAllDone) : undefined}
                         />
                     ))}
                 </Box>
@@ -979,13 +986,16 @@ function PartnerDetailDialog({ partner, columns, onClose, onToggleTask, onUpdate
 
 // ─── Kanban Column ────────────────────────────────────────────────────────────
 
-function KanbanColumn({ col, partners, onCardClick, toggleTask, onUpdatePartner }: {
+function KanbanColumn({ col, partners, onCardClick, toggleTask, onUpdatePartner, showAllDone, onToggleAllDone }: {
     col: any;
     partners: Partner[];
     onCardClick: (p: Partner) => void;
     toggleTask: any;
     onUpdatePartner: any;
+    showAllDone?: boolean;
+    onToggleAllDone?: () => void;
 }) {
+    const theme = useTheme();
     const { mode } = useColorMode();
     const lang = useContext(LangContext);
     const t = DICT[lang];
@@ -1000,11 +1010,34 @@ function KanbanColumn({ col, partners, onCardClick, toggleTask, onUpdatePartner 
                 p: 2, mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 bgcolor: 'background.paper', borderRadius: 3, borderTop: `4px solid ${col.color}`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
                     <Typography fontWeight={700} sx={{ color: 'text.primary', fontSize: 13 }}>{col.title}</Typography>
                     <Tooltip title={col.description} placement="top" arrow>
                         <InfoOutlinedIcon sx={{ fontSize: 13, color: 'text.disabled', cursor: 'help' }} />
                     </Tooltip>
+                    
+                    {col.id === 'DONE' && onToggleAllDone && (
+                        <Button 
+                            size="small" 
+                            variant="text" 
+                            onClick={onToggleAllDone}
+                            sx={{ 
+                                ml: 0.5, 
+                                fontSize: 10, 
+                                py: 0.5, 
+                                px: 1,
+                                minWidth: 'auto', 
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                color: showAllDone ? 'primary.main' : 'text.disabled',
+                                bgcolor: showAllDone ? alpha(theme.palette.primary.main, 0.05) : 'transparent',
+                                borderRadius: 1.5,
+                                '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                            }}
+                        >
+                            {showAllDone ? t.showRecent : t.showAll}
+                        </Button>
+                    )}
                 </Box>
                 <Chip size="small" label={partners.length} sx={{ bgcolor: col.bg, color: col.color, fontWeight: 700 }} />
             </Box>
