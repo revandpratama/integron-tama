@@ -12,6 +12,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+import { useTheme, alpha } from '@mui/material/styles';
 import { CreatePartnerInput } from '@/app/lib/validations/partner';
 
 interface PartnerFormProps {
@@ -26,9 +27,9 @@ interface FeatureOption {
   category: string;
 }
 
-const CATEGORY_COLOR: Record<string, { bg: string; color: string }> = {
-  SNAP:     { bg: '#dbeafe', color: '#1d4ed8' },
-  NON_SNAP: { bg: '#ede9fe', color: '#6d28d9' },
+const CATEGORY_COLOR: Record<string, string> = {
+  SNAP:     '#3b82f6',
+  NON_SNAP: '#8b5cf6',
 };
 
 export default function PartnerForm({ initialData, onSubmit, isSubmitting }: PartnerFormProps) {
@@ -120,6 +121,8 @@ export default function PartnerForm({ initialData, onSubmit, isSubmitting }: Par
     onSubmit(formData);
   };
 
+  const theme = useTheme();
+
   return (
     <form onSubmit={handleSubmit} id="partner-form">
       <Stack spacing={3}>
@@ -191,9 +194,9 @@ export default function PartnerForm({ initialData, onSubmit, isSubmitting }: Par
               groupBy={(option) => option.category}
               getOptionLabel={(option) => option.name}
               isOptionEqualToValue={(option, value) => option.id === value.id}
-              renderTags={(value, getTagProps) =>
+               renderTags={(value, getTagProps) =>
                 value.map((option, index) => {
-                  const colors = CATEGORY_COLOR[option.category] || { bg: '#f3f4f6', color: '#374151' };
+                  const color = CATEGORY_COLOR[option.category] || '#6b7280';
                   const { key, ...tagProps } = getTagProps({ index });
                   return (
                     <Chip
@@ -202,26 +205,26 @@ export default function PartnerForm({ initialData, onSubmit, isSubmitting }: Par
                       size="small"
                       {...tagProps}
                       sx={{
-                        bgcolor: colors.bg,
-                        color: colors.color,
+                        bgcolor: alpha(color, 0.1),
+                        color: color,
                         fontWeight: 600,
                         fontSize: 11,
                         height: 22,
-                        '& .MuiChip-deleteIcon': { color: colors.color, opacity: 0.6 }
+                        '& .MuiChip-deleteIcon': { color: color, opacity: 0.6 }
                       }}
                     />
                   );
                 })
               }
               renderOption={(props, option) => {
-                const colors = CATEGORY_COLOR[option.category] || { bg: '#f3f4f6', color: '#374151' };
+                const color = CATEGORY_COLOR[option.category] || '#6b7280';
                 return (
                   <Box component="li" {...props} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="body2">{option.name}</Typography>
                     <Chip
                       label={option.category.replace('_', '-')}
                       size="small"
-                      sx={{ bgcolor: colors.bg, color: colors.color, fontWeight: 600, fontSize: 10, height: 18 }}
+                      sx={{ bgcolor: alpha(color, 0.1), color: color, fontWeight: 600, fontSize: 10, height: 18 }}
                     />
                   </Box>
                 );

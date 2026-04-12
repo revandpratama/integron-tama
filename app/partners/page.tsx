@@ -167,7 +167,7 @@ export default function PartnersPage() {
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       
       {/* Header Toolbar */}
       <Box sx={{ 
@@ -176,12 +176,14 @@ export default function PartnersPage() {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between', 
-          borderBottom: '1px solid #e5e7eb',
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
           minHeight: 60,
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
              {/* Title */}
-             <Typography variant="h6" fontWeight={700} sx={{ color: '#1f2937' }}>
+             <Typography variant="h6" fontWeight={700} sx={{ color: 'text.primary' }}>
                 Partners
              </Typography>
              
@@ -195,9 +197,9 @@ export default function PartnersPage() {
                     textTransform: 'none',
                     fontWeight: 600,
                     borderRadius: 2,
-                    borderColor: '#e5e7eb',
-                    color: '#374151',
-                    '&:hover': { bgcolor: '#f9fafb', borderColor: '#d1d5db' }
+                    borderColor: 'divider',
+                    color: 'text.primary',
+                    '&:hover': { bgcolor: 'action.hover', borderColor: 'divider' }
                 }}
              >
                 Add Partner
@@ -220,9 +222,9 @@ export default function PartnersPage() {
                                 cursor: 'pointer',
                                 fontSize: 13,
                                 fontWeight: isActive ? 600 : 500,
-                                color: isActive ? '#1f2937' : '#6b7280',
-                                bgcolor: isActive ? '#f3f4f6' : 'transparent',
-                                '&:hover': { bgcolor: '#f3f4f6', color: '#1f2937' }
+                                color: isActive ? 'text.primary' : 'text.secondary',
+                                bgcolor: isActive ? 'action.selected' : 'transparent',
+                                '&:hover': { bgcolor: 'action.hover', color: 'text.primary' }
                             }}
                          >
                              {status}
@@ -235,7 +237,7 @@ export default function PartnersPage() {
         {/* Right Action: Search */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 0.5 }}>
              <Box sx={{ position: 'relative' }}>
-                 <SearchIcon sx={{ fontSize: 18, color: '#9ca3af', position: 'absolute', top: 8, left: 8 }} />
+                 <SearchIcon sx={{ fontSize: 18, color: 'text.disabled', position: 'absolute', top: 8, left: 8 }} />
                  <TextField
                     placeholder="Search partners..."
                     variant="outlined"
@@ -249,10 +251,10 @@ export default function PartnersPage() {
                             height: 32,
                             width: 200,
                             fontSize: 13,
-                            bgcolor: '#f9fafb',
+                            bgcolor: 'action.hover',
                             '& fieldset': { borderColor: 'transparent' },
-                            '&:hover fieldset': { borderColor: '#e5e7eb' },
-                            '&.Mui-focused fieldset': { borderColor: '#3b82f6' }
+                            '&:hover fieldset': { borderColor: 'divider' },
+                            '&.Mui-focused fieldset': { borderColor: 'primary.main' }
                         }
                     }}
                  />

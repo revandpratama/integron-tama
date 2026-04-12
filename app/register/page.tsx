@@ -94,7 +94,7 @@ export default function RegisterPage() {
                     fullWidth 
                     variant="contained" 
                     disabled={loading}
-                    sx={{ mt: 4, mb: 2, bgcolor: '#0f172a', py: 1.5, borderRadius: 2 }}
+                    sx={{ mt: 4, mb: 2, bgcolor: 'text.primary', color: 'background.paper', py: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'text.secondary' } }}
                 >
                     {loading ? 'Creating Account...' : 'Register'}
                 </Button>

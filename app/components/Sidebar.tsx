@@ -15,6 +15,8 @@ import {
   Avatar,
   Tooltip,
   Skeleton,
+  useTheme,
+  alpha,
 } from '@mui/material';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
@@ -31,6 +33,9 @@ import QrCode2Icon from '@mui/icons-material/QrCode2';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
+import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
+import { useColorMode } from '../providers/ThemeProvider';
 
 import { useState } from 'react';
 import Image from 'next/image';
@@ -46,6 +51,8 @@ interface SidebarProps {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const theme = useTheme();
+  const { mode, toggleColorMode } = useColorMode();
 
   const { data: meData, isLoading: meLoading } = useQuery<{ user: { id: string; name: string | null; email: string } | null }>({
     queryKey: ['me'],
@@ -91,8 +98,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         '& .MuiDrawer-paper': {
           width: collapsed ? DRAWER_COLLAPSED_WIDTH : DRAWER_WIDTH,
           boxSizing: 'border-box',
-          bgcolor: 'white',
-          borderRight: '1px solid #e5e7eb',
+          bgcolor: 'background.paper',
+          borderRight: '1px solid',
+          borderColor: 'divider',
           transition: 'width 0.2s ease-in-out',
           overflowX: 'hidden',
           display: 'flex',
@@ -118,12 +126,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               height={32}
               style={{ borderRadius: 8 }}
             />
-            <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1f2937' }}>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ color: 'text.primary' }}>
               Integron
             </Typography>
           </Box>
         )}
-        <IconButton onClick={onToggle} size="small" sx={{ color: '#9ca3af' }}>
+        <IconButton onClick={onToggle} size="small" sx={{ color: 'text.secondary' }}>
           {collapsed ? <KeyboardArrowRightIcon /> : <KeyboardArrowLeftIcon />}
         </IconButton>
       </Box>
@@ -143,11 +151,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 py: 1.5,
                 px: 2,
                 justifyContent: collapsed ? 'center' : 'flex-start',
-                bgcolor: isActive ? '#eff6ff' : 'transparent',
-                color: isActive ? '#3b82f6' : '#6b7280',
+                bgcolor: isActive ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                color: isActive ? 'primary.main' : 'text.secondary',
                 '&:hover': {
-                  bgcolor: isActive ? '#eff6ff' : '#f9fafb',
-                  color: isActive ? '#3b82f6' : '#1f2937',
+                  bgcolor: isActive ? alpha(theme.palette.primary.main, 0.15) : 'action.hover',
+                  color: isActive ? 'primary.main' : 'text.primary',
                 },
               }}
             >
@@ -191,8 +199,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     height: 36,
                     fontSize: 14,
                     fontWeight: 700,
-                    bgcolor: '#3b82f6',
-                    color: 'white',
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
                     cursor: 'default',
                   }}
                 >
@@ -211,8 +219,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               py: 1.5,
               mb: 1,
               borderRadius: 2,
-              bgcolor: '#f9fafb',
-              border: '1px solid #f3f4f6',
+              bgcolor: 'action.hover',
+              border: '1px solid',
+              borderColor: 'divider',
             }}
           >
             {meLoading ? (
@@ -224,8 +233,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   height: 36,
                   fontSize: 14,
                   fontWeight: 700,
-                  bgcolor: '#3b82f6',
-                  color: 'white',
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
                   flexShrink: 0,
                 }}
               >
@@ -244,14 +253,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     variant="subtitle2"
                     fontWeight={700}
                     noWrap
-                    sx={{ fontSize: 13, color: '#111827', lineHeight: 1.3 }}
+                    sx={{ fontSize: 13, color: 'text.primary', lineHeight: 1.3 }}
                   >
                     {user?.name || 'Anonymous'}
                   </Typography>
                   <Typography
                     variant="caption"
                     noWrap
-                    sx={{ fontSize: 11, color: '#6b7280', display: 'block' }}
+                    sx={{ fontSize: 11, color: 'text.secondary', display: 'block' }}
                   >
                     {displayEmail}
                   </Typography>
@@ -261,6 +270,32 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </Box>
         )}
 
+        {/* Theme Toggle */}
+        <ListItemButton
+          onClick={toggleColorMode}
+          sx={{
+            borderRadius: 2,
+            px: 2,
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            color: 'text.secondary',
+            mb: 0.5,
+            '&:hover': {
+               bgcolor: 'action.hover',
+               color: 'text.primary',
+            }
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: collapsed ? 0 : 36, color: 'inherit', justifyContent: 'center' }}>
+            {mode === 'light' ? <DarkModeOutlinedIcon /> : <LightModeOutlinedIcon />}
+          </ListItemIcon>
+          {!collapsed && (
+            <ListItemText
+              primary={mode === 'light' ? 'Dark Mode' : 'Light Mode'}
+              primaryTypographyProps={{ fontSize: 14, fontWeight: 500 }}
+            />
+          )}
+        </ListItemButton>
+
         {/* Logout Button */}
         <ListItemButton
           onClick={handleLogout}
@@ -268,11 +303,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             borderRadius: 2,
             px: 2,
             justifyContent: collapsed ? 'center' : 'flex-start',
-            color: '#ef4444',
+            color: 'error.main',
             mt: 0.5,
             '&:hover': {
-               bgcolor: '#fef2f2',
-               color: '#dc2626',
+               bgcolor: alpha(theme.palette.error.main, 0.1),
+               color: 'error.dark',
             }
           }}
         >

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 const UPSTREAM_URL = 'http://kyogre-ocp.apps.ocp-new-dev.bri.co.id:80/qris_api/qris_pay_bri';
 const TIMEOUT_MS = 10_000; // 10 seconds — enough for intranet, fast fail on public wifi
 
+import { getSession } from '@/app/lib/auth';
+import { prisma } from '@/app/lib/prisma';
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
@@ -22,6 +25,26 @@ export async function POST(req: NextRequest) {
     const data = contentType.includes('application/json')
       ? await upstream.json()
       : await upstream.text();
+
+    if (upstream.ok) {
+        const session = await getSession();
+        if (session && session.id) {
+            await prisma.activityLog.create({
+                data: {
+                    userId: session.id as string,
+                    actionType: 'PAY_QRIS',
+                    entityType: 'qris',
+                    entityId: body.cardAcceptorId || 'unknown',
+                    metadata: {
+                        merchantName: body.cardAcceptorName || 'Unknown Merchant',
+                        amount: body.transactionAmount,
+                        isDynamic: !!body.cardAcceptorId,
+                        response: data
+                    }
+                }
+            });
+        }
+    }
 
     return NextResponse.json(
       { ok: upstream.ok, httpStatus: upstream.status, data, errorType: null },

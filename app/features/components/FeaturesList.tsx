@@ -10,6 +10,8 @@ import {
   Stack,
   Tooltip,
   TablePagination,
+  alpha,
+  useTheme
 } from '@mui/material';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { Feature } from '@/app/lib/validations/feature';
@@ -43,9 +45,10 @@ function FeatureRow({ feature, onEdit, onDelete, onNoteUpdate }: {
 }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
+  const theme = useTheme();
   const isSnap = feature.category === 'SNAP';
   const categoryColor = isSnap ? '#10b981' : '#8b5cf6';
-  const categoryBg = isSnap ? '#d1fae5' : '#ede9fe';
+  const categoryBg = alpha(categoryColor, 0.1);
 
   return (
     <Box
@@ -54,9 +57,10 @@ function FeatureRow({ feature, onEdit, onDelete, onNoteUpdate }: {
         alignItems: 'center',
         py: 1.5,
         px: 2,
-        borderBottom: '1px solid #f3f4f6',
-        bgcolor: 'white',
-        '&:hover': { bgcolor: '#f9fafb', '& .row-actions': { opacity: 1 } },
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        '&:hover': { bgcolor: 'action.hover', '& .row-actions': { opacity: 1 } },
       }}
     >
       {/* Category Chip */}
@@ -79,7 +83,7 @@ function FeatureRow({ feature, onEdit, onDelete, onNoteUpdate }: {
 
       {/* Name & Notes */}
       <Box sx={{ flex: 1, minWidth: 200, mr: 2 }}>
-          <Typography variant="body2" fontWeight={600} sx={{ color: '#1f2937', mb: 0.5 }}>
+          <Typography variant="body2" fontWeight={600} sx={{ color: 'text.primary', mb: 0.5 }}>
               {feature.name}
           </Typography>
           <FeatureNotes 
@@ -92,7 +96,7 @@ function FeatureRow({ feature, onEdit, onDelete, onNoteUpdate }: {
       <Box sx={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5, mr: 2 }}>
            {feature.apigeeProducts.length > 0 && (
                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                   <Typography variant="caption" sx={{ color: '#9ca3af', width: 60 }}>Products:</Typography>
+                   <Typography variant="caption" sx={{ color: 'text.disabled', width: 60 }}>Products:</Typography>
                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                        {feature.apigeeProducts.map((p, i) => (
                            <Chip key={`${p}-${i}`} label={p} size="small" variant="outlined" sx={{ height: 20, fontSize: 10, borderRadius: 1 }} />
@@ -102,28 +106,28 @@ function FeatureRow({ feature, onEdit, onDelete, onNoteUpdate }: {
            )}
            {feature.apigeeTraceProxies.length > 0 && (
                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                   <Typography variant="caption" sx={{ color: '#9ca3af', width: 60 }}>Proxies:</Typography>
+                   <Typography variant="caption" sx={{ color: 'text.disabled', width: 60 }}>Proxies:</Typography>
                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                       {feature.apigeeTraceProxies.map((p, i) => (
-                           <Chip key={`${p}-${i}`} label={p} size="small" variant="outlined" sx={{ height: 20, fontSize: 10, borderRadius: 1, bgcolor: '#f1f5f9', border: 'none' }} />
+                        {feature.apigeeTraceProxies.map((p, i) => (
+                           <Chip key={`${p}-${i}`} label={p} size="small" variant="outlined" sx={{ height: 20, fontSize: 10, borderRadius: 1, bgcolor: 'action.hover', border: 'none' }} />
                        ))}
                    </Box>
                </Box>
            )}
            {feature.apigeeProducts.length === 0 && feature.apigeeTraceProxies.length === 0 && (
-               <Typography variant="caption" sx={{ color: '#d1d5db', fontStyle: 'italic' }}>No technical specs</Typography>
+               <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>No technical specs</Typography>
            )}
       </Box>
 
       {/* Date */}
-      <Typography variant="caption" sx={{ width: 100, textAlign: 'right', color: '#6b7280', mr: 2 }}>
+      <Typography variant="caption" sx={{ width: 100, textAlign: 'right', color: 'text.secondary', mr: 2 }}>
          {format(new Date(feature.updatedAt), 'MMM d')}
       </Typography>
 
       {/* Actions */}
       <Box className="row-actions" sx={{ opacity: 0, width: 32, display: 'flex', justifyContent: 'center' }}>
         <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
-          <MoreHorizIcon sx={{ fontSize: 16, color: '#9ca3af' }} />
+          <MoreHorizIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
         </IconButton>
         <Menu
             anchorEl={anchorEl}
@@ -158,9 +162,10 @@ export default function FeaturesList({
             display: 'flex', 
             py: 1, 
             px: 2, 
-            borderBottom: '1px solid #e5e7eb', 
-            bgcolor: '#f9fafb',
-            color: '#6b7280'
+            borderBottom: '1px solid', 
+            borderColor: 'divider',
+            bgcolor: 'background.default',
+            color: 'text.secondary'
         }}>
             <Typography variant="caption" fontWeight={600} sx={{ width: 100, mr: 2 }}>CATEGORY</Typography>
             <Typography variant="caption" fontWeight={600} sx={{ flex: 1, minWidth: 200, mr: 2 }}>FEATURE NAME</Typography>
@@ -170,7 +175,7 @@ export default function FeaturesList({
         </Box>
 
         {features.length === 0 ? (
-            <Box sx={{ p: 4, textAlign: 'center', color: '#9ca3af' }}>
+            <Box sx={{ p: 4, textAlign: 'center', color: 'text.disabled' }}>
                 <Typography variant="body2">{loading ? 'Loading...' : 'No features found'}</Typography>
             </Box>
         ) : (
@@ -193,7 +198,7 @@ export default function FeaturesList({
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={onRowsPerPageChange}
             rowsPerPageOptions={[10, 25, 50]}
-            sx={{ borderTop: '1px solid #e5e7eb' }}
+            sx={{ borderTop: '1px solid', borderColor: 'divider' }}
         />
     </Box>
   );

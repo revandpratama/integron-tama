@@ -18,6 +18,8 @@ import {
   Tooltip,
   Chip,
   Divider,
+  alpha,
+  useTheme
 } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -257,6 +259,7 @@ export default function QrisPayPage() {
   const [qrisType, setQrisType] = useState<QrisType>('dynamic');
   const [scanMethod, setScanMethod] = useState<ScanMethod>('camera');
   const [isScanning, setIsScanning] = useState(false);
+  const theme = useTheme();
   const [scannedRaw, setScannedRaw] = useState<string | null>(null);
   const [payload, setPayload] = useState<PayloadState | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -469,10 +472,10 @@ export default function QrisPayPage() {
 
   const handleCopyResponse = () => {
     if (!response) return;
-    const payload = response.ok
+    const dataToCopy = response.ok
       ? response.data
       : { errorType: response.errorType, errorCode: response.errorCode, message: response.errorMessage };
-    navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    navigator.clipboard.writeText(JSON.stringify(dataToCopy, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -480,7 +483,7 @@ export default function QrisPayPage() {
   useEffect(() => () => stopCamera(), [stopCamera]);
 
   return (
-    <Box sx={{ p: 4, maxWidth: 1100, mx: 'auto' }}>
+    <Box sx={{ p: 4, maxWidth: 1100, mx: 'auto', bgcolor: 'background.default', minHeight: '100vh' }}>
       {/* ── Header ── */}
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -489,13 +492,13 @@ export default function QrisPayPage() {
               width: 44,
               height: 44,
               borderRadius: 2,
-              bgcolor: '#eff6ff',
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <QrCode2Icon sx={{ color: '#3b82f6', fontSize: 26 }} />
+            <QrCode2Icon sx={{ color: 'primary.main', fontSize: 26 }} />
           </Box>
           <Box>
             <Typography variant="h5" fontWeight={700}>
@@ -534,12 +537,12 @@ export default function QrisPayPage() {
       </Box>
 
       {/* ── QRIS Type Tabs ── */}
-      <Paper elevation={0} sx={{ mb: 3, borderRadius: 2, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+      <Paper elevation={0} sx={{ mb: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden', bgcolor: 'background.paper' }}>
         <Tabs
           value={qrisType}
           onChange={handleQrisTypeChange}
-          sx={{ borderBottom: '1px solid #e5e7eb', px: 1 }}
-          TabIndicatorProps={{ style: { backgroundColor: '#3b82f6', height: 3 } }}
+          sx={{ borderBottom: '1px solid', borderColor: 'divider', px: 1 }}
+          TabIndicatorProps={{ style: { backgroundColor: theme.palette.primary.main, height: 3 } }}
         >
           <Tab
             value="dynamic"
@@ -549,8 +552,8 @@ export default function QrisPayPage() {
                   label="Dynamic"
                   size="small"
                   sx={{
-                    bgcolor: qrisType === 'dynamic' ? '#3b82f6' : '#f3f4f6',
-                    color: qrisType === 'dynamic' ? 'white' : '#6b7280',
+                    bgcolor: qrisType === 'dynamic' ? 'primary.main' : 'action.hover',
+                    color: qrisType === 'dynamic' ? 'primary.contrastText' : 'text.secondary',
                     fontWeight: 700,
                     fontSize: 10,
                     height: 20,
@@ -569,8 +572,8 @@ export default function QrisPayPage() {
                   label="Static"
                   size="small"
                   sx={{
-                    bgcolor: qrisType === 'static' ? '#8b5cf6' : '#f3f4f6',
-                    color: qrisType === 'static' ? 'white' : '#6b7280',
+                    bgcolor: qrisType === 'static' ? 'secondary.main' : 'action.hover',
+                    color: qrisType === 'static' ? 'secondary.contrastText' : 'text.secondary',
                     fontWeight: 700,
                     fontSize: 10,
                     height: 20,
@@ -607,13 +610,13 @@ export default function QrisPayPage() {
       {!payload && (
         <Paper
           elevation={0}
-          sx={{ mb: 3, borderRadius: 2, border: '1px solid #e5e7eb', overflow: 'hidden' }}
+          sx={{ mb: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden', bgcolor: 'background.paper' }}
         >
           <Tabs
             value={scanMethod}
             onChange={handleScanMethodChange}
-            sx={{ bgcolor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}
-            TabIndicatorProps={{ style: { backgroundColor: '#1f2937', height: 3 } }}
+            sx={{ bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider' }}
+            TabIndicatorProps={{ style: { backgroundColor: theme.palette.text.primary, height: 3 } }}
           >
             <Tab
               icon={<VideocamIcon fontSize="small" />}
@@ -642,7 +645,7 @@ export default function QrisPayPage() {
                   mx: 'auto',
                   borderRadius: 3,
                   overflow: 'hidden',
-                  bgcolor: '#0f172a',
+                  bgcolor: '#000',
                   aspectRatio: '4/3',
                   display: 'flex',
                   alignItems: 'center',
@@ -682,7 +685,8 @@ export default function QrisPayPage() {
                         content: '""',
                         position: 'absolute',
                         inset: -2,
-                        border: '3px solid #3b82f6',
+                        border: '3px solid',
+                        borderColor: 'primary.main',
                         borderRadius: 'inherit',
                         animation: 'qrisPulse 1.5s ease-in-out infinite',
                       },
@@ -702,21 +706,21 @@ export default function QrisPayPage() {
                     onClick={startCamera}
                     startIcon={<VideocamIcon />}
                     sx={{
-                      bgcolor: '#3b82f6',
+                      bgcolor: 'primary.main',
                       px: 4,
                       py: 1.5,
                       borderRadius: 2,
                       textTransform: 'none',
                       fontWeight: 700,
                       fontSize: 14,
-                      '&:hover': { bgcolor: '#2563eb' },
+                      '&:hover': { bgcolor: 'primary.dark' },
                     }}
                   >
                     Start Camera
                   </Button>
                 ) : (
                   <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-                    <CircularProgress size={20} thickness={5} sx={{ color: '#3b82f6' }} />
+                    <CircularProgress size={20} thickness={5} sx={{ color: 'primary.main' }} />
                     <Typography variant="body2" color="text.secondary" fontWeight={500}>
                       Scanning for QRIS code…
                     </Typography>
@@ -748,12 +752,13 @@ export default function QrisPayPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   p: 5,
-                  border: '2px dashed #d1d5db',
+                  border: '2px dashed',
+                  borderColor: 'divider',
                   borderRadius: 3,
                   cursor: 'pointer',
-                  bgcolor: '#f9fafb',
+                  bgcolor: 'background.default',
                   transition: 'all 0.2s',
-                  '&:hover': { bgcolor: '#eff6ff', borderColor: '#3b82f6' },
+                  '&:hover': { bgcolor: 'action.hover', borderColor: 'primary.main' },
                   minHeight: 220,
                 }}
               >
@@ -808,20 +813,21 @@ export default function QrisPayPage() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              bgcolor: '#f0fdf4',
-              borderBottom: '1px solid #bbf7d0',
+              bgcolor: alpha(theme.palette.success.main, 0.1),
+              borderBottom: '1px solid',
+              borderColor: alpha(theme.palette.success.main, 0.2),
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <CheckCircleIcon sx={{ color: '#16a34a', fontSize: 24 }} />
+              <CheckCircleIcon sx={{ color: 'success.main', fontSize: 24 }} />
               <Box>
-                <Typography fontWeight={700} sx={{ color: '#15803d', fontSize: 14 }}>
+                <Typography fontWeight={700} sx={{ color: 'success.main', fontSize: 14 }}>
                   QR Code Scanned Successfully
                 </Typography>
                 <Typography
                   variant="caption"
                   sx={{
-                    color: '#6b7280',
+                    color: 'text.secondary',
                     fontFamily: 'monospace',
                     display: 'block',
                     mt: 0.2,
@@ -852,8 +858,8 @@ export default function QrisPayPage() {
             <LinearProgress
               sx={{
                 height: 3,
-                bgcolor: '#e0f2fe',
-                '& .MuiLinearProgress-bar': { bgcolor: '#3b82f6' },
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                '& .MuiLinearProgress-bar': { bgcolor: 'primary.main' },
               }}
             />
           )}
@@ -876,7 +882,7 @@ export default function QrisPayPage() {
                     sx={{
                       textTransform: 'uppercase',
                       letterSpacing: 1,
-                      color: '#6b7280',
+                      color: 'text.secondary',
                       mb: 1.5,
                       display: 'block',
                     }}
@@ -888,7 +894,7 @@ export default function QrisPayPage() {
                       const isAutoGen = AUTO_FIELDS.has(key);
                       const isAmountField = key === 'transactionAmount';
                       const isAmountRequired = isAmountField && qrisType === 'static';
-                      const isAmountError = isAmountRequired && !payload[key];
+                      const isAmountError = isAmountRequired && payload && !payload[key];
 
                       return (
                         <Grid
@@ -901,8 +907,8 @@ export default function QrisPayPage() {
                         >
                           <TextField
                             label={FIELD_LABELS[key]}
-                            value={payload[key]}
-                            onChange={(e) => setPayload({ ...payload, [key]: e.target.value })}
+                            value={payload ? payload[key] : ''}
+                            onChange={(e) => payload && setPayload({ ...payload, [key]: e.target.value })}
                             fullWidth
                             size="small"
                             required={isAmountRequired}
@@ -914,7 +920,7 @@ export default function QrisPayPage() {
                                 sx: {
                                   fontFamily: isAutoGen ? 'monospace' : 'inherit',
                                   fontSize: 13,
-                                  bgcolor: isAutoGen ? '#f9fafb' : isAmountRequired ? '#fffbeb' : 'white',
+                                  bgcolor: isAutoGen ? 'action.hover' : isAmountRequired ? (theme.palette.mode === 'light' ? '#fffbeb' : alpha(theme.palette.warning.main, 0.1)) : 'background.paper',
                                 },
                               },
                             }}
@@ -942,19 +948,20 @@ export default function QrisPayPage() {
                 variant="contained"
                 onClick={handleSubmit}
                 disabled={
-                  isSubmitting || (qrisType === 'static' && !payload.transactionAmount.trim())
+                  isSubmitting || !payload || (qrisType === 'static' && !payload.transactionAmount.trim())
                 }
                 startIcon={
                   isSubmitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon />
                 }
                 sx={{
-                  bgcolor: '#0f172a',
+                  bgcolor: 'text.primary',
+                  color: 'background.paper',
                   px: 4,
                   borderRadius: 2,
                   textTransform: 'none',
                   fontWeight: 700,
-                  '&:hover': { bgcolor: '#1e293b' },
-                  '&:disabled': { bgcolor: '#94a3b8', color: 'white' },
+                  '&:hover': { bgcolor: 'text.secondary' },
+                  '&:disabled': { bgcolor: 'action.disabledBackground', color: 'text.disabled' },
                 }}
               >
                 {isSubmitting ? 'Submitting…' : 'Submit Payment'}
@@ -971,7 +978,7 @@ export default function QrisPayPage() {
             /* ── Success ── */
             <Paper
               elevation={0}
-              sx={{ borderRadius: 2, border: '1px solid #bbf7d0', overflow: 'hidden' }}
+              sx={{ borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.3), overflow: 'hidden', bgcolor: 'background.paper' }}
             >
               <Box
                 sx={{
@@ -979,18 +986,19 @@ export default function QrisPayPage() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  bgcolor: '#f0fdf4',
-                  borderBottom: '1px solid #bbf7d0',
+                  bgcolor: alpha(theme.palette.success.main, 0.1),
+                  borderBottom: '1px solid',
+                  borderColor: alpha(theme.palette.success.main, 0.2),
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CheckCircleIcon sx={{ color: '#16a34a' }} />
+                  <CheckCircleIcon sx={{ color: 'success.main' }} />
                   <Box>
-                    <Typography fontWeight={700} sx={{ color: '#15803d' }}>
+                    <Typography fontWeight={700} sx={{ color: 'success.main' }}>
                       Payment Request Sent
                     </Typography>
                     {response.httpStatus && (
-                      <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                         HTTP {response.httpStatus}
                       </Typography>
                     )}
@@ -1002,7 +1010,7 @@ export default function QrisPayPage() {
                   </IconButton>
                 </Tooltip>
               </Box>
-              <Box sx={{ p: 3, bgcolor: '#0f172a' }}>
+              <Box sx={{ p: 3, bgcolor: 'action.hover' }}>
                 <pre
                   style={{
                     margin: 0,
@@ -1010,7 +1018,7 @@ export default function QrisPayPage() {
                     fontSize: 12.5,
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
-                    color: '#e2e8f0',
+                    color: 'text.primary',
                     lineHeight: 1.7,
                   }}
                 >
@@ -1022,29 +1030,30 @@ export default function QrisPayPage() {
             /* ── Error ── */
             <Paper
               elevation={0}
-              sx={{ borderRadius: 2, border: '1px solid #fecaca', overflow: 'hidden' }}
+              sx={{ borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.error.main, 0.3), overflow: 'hidden', bgcolor: 'background.paper' }}
             >
               {/* Error header */}
               <Box
                 sx={{
                   p: 2.5,
-                  bgcolor: '#fef2f2',
-                  borderBottom: '1px solid #fecaca',
+                  bgcolor: alpha(theme.palette.error.main, 0.1),
+                  borderBottom: '1px solid',
+                  borderColor: alpha(theme.palette.error.main, 0.2),
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 1.5,
                 }}
               >
-                <ErrorOutlineIcon sx={{ color: '#dc2626', mt: 0.2, flexShrink: 0 }} />
+                <ErrorOutlineIcon sx={{ color: 'error.main', mt: 0.2, flexShrink: 0 }} />
                 <Box sx={{ flex: 1 }}>
-                  <Typography fontWeight={700} sx={{ color: '#991b1b', mb: 0.5 }}>
+                  <Typography fontWeight={700} sx={{ color: 'error.main', mb: 0.5 }}>
                     {response.errorType === 'timeout'
                       ? 'Connection Timed Out'
                       : response.errorType === 'unreachable'
                       ? 'Server Unreachable'
                       : 'Request Failed'}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#7f1d1d', lineHeight: 1.6 }}>
+                  <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.6 }}>
                     {response.errorType === 'timeout' && (
                       <>The QRIS API did not respond within <strong>10 seconds</strong>. This usually means the server is down or unreachable from your current network.</>
                     )}
@@ -1083,10 +1092,10 @@ export default function QrisPayPage() {
               )}
 
               {/* Technical detail */}
-              <Box sx={{ p: 2.5, bgcolor: '#0f172a' }}>
+              <Box sx={{ p: 2.5, bgcolor: 'action.hover' }}>
                 <Typography
                   variant="caption"
-                  sx={{ color: '#94a3b8', display: 'block', mb: 1, letterSpacing: 0.5 }}
+                  sx={{ color: 'text.disabled', display: 'block', mb: 1, letterSpacing: 0.5 }}
                 >
                   TECHNICAL DETAIL
                 </Typography>
@@ -1097,7 +1106,7 @@ export default function QrisPayPage() {
                     fontSize: 12,
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
-                    color: '#fca5a5',
+                    color: theme.palette.error.main,
                     lineHeight: 1.6,
                   }}
                 >

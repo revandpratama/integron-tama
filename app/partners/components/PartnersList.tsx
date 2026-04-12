@@ -19,22 +19,24 @@ import {
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { useTheme, alpha } from '@mui/material/styles';
+import { useColorMode } from '@/app/providers/ThemeProvider';
 import { Partner } from '../types';
 import { format } from 'date-fns';
 import { useState } from 'react';
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  ONBOARDING: { label: 'Onboarding', color: '#8b5cf6', bg: '#ede9fe' },
-  DRAFT: { label: 'Draft', color: '#3b82f6', bg: '#dbeafe' },
-  LIVE: { label: 'Live', color: '#059669', bg: '#d1fae5' },
-  MAINTENANCE: { label: 'Maintenance', color: '#f59e0b', bg: '#fef3c7' },
-  SUSPENDED: { label: 'Suspended', color: '#ef4444', bg: '#fecaca' },
-  DEFAULT: { label: 'Unknown', color: '#6b7280', bg: '#f3f4f6' },
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  ONBOARDING: { label: 'Onboarding', color: '#8b5cf6' },
+  DRAFT: { label: 'Draft', color: '#3b82f6' },
+  LIVE: { label: 'Live', color: '#059669' },
+  MAINTENANCE: { label: 'Maintenance', color: '#f59e0b' },
+  SUSPENDED: { label: 'Suspended', color: '#ef4444' },
+  DEFAULT: { label: 'Unknown', color: '#6b7280' },
 };
 
-const CATEGORY_COLOR: Record<string, { bg: string; color: string }> = {
-  SNAP:     { bg: '#dbeafe', color: '#1d4ed8' },
-  NON_SNAP: { bg: '#ede9fe', color: '#6d28d9' },
+const CATEGORY_COLOR: Record<string, string> = {
+  SNAP:     '#3b82f6',
+  NON_SNAP: '#8b5cf6',
 };
 
 interface PartnersListProps {
@@ -84,9 +86,10 @@ export default function PartnersList({
             display: 'flex', 
             py: 1, 
             px: 2, 
-            borderBottom: '1px solid #e5e7eb', 
-            bgcolor: '#f9fafb',
-            color: '#6b7280',
+            borderBottom: '1px solid', 
+            borderColor: 'divider',
+            bgcolor: 'background.default',
+            color: 'text.secondary',
             alignItems: 'center'
         }}>
             <Box sx={{ width: 120, mr: 2 }}>
@@ -142,7 +145,7 @@ export default function PartnersList({
 
         {/* List Content */}
         {partners.length === 0 ? (
-            <Box sx={{ p: 4, textAlign: 'center', color: '#9ca3af' }}>
+            <Box sx={{ p: 4, textAlign: 'center', color: 'text.disabled' }}>
                 <Typography variant="body2">{loading ? 'Loading...' : 'No partners found'}</Typography>
             </Box>
         ) : (
@@ -160,7 +163,7 @@ export default function PartnersList({
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={onRowsPerPageChange}
             rowsPerPageOptions={[5, 10, 25]}
-            sx={{ borderTop: '1px solid #e5e7eb' }}
+            sx={{ borderTop: '1px solid', borderColor: 'divider' }}
         />
     </Box>
   );
@@ -172,6 +175,8 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
     onDelete: any;
     onStartOnboarding: (id: string) => void;
 }) {
+  const theme = useTheme();
+  const { mode } = useColorMode();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const statusConfig = STATUS_CONFIG[partner.status] || STATUS_CONFIG.DEFAULT;
   const features = partner.features || [];
@@ -185,9 +190,10 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
         alignItems: 'center',
         py: 1.5,
         px: 2,
-        borderBottom: '1px solid #f3f4f6',
-        bgcolor: 'white',
-        '&:hover': { bgcolor: '#f9fafb', '& .row-actions': { opacity: 1 } },
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        '&:hover': { bgcolor: 'action.hover', '& .row-actions': { opacity: 1 } },
       }}
     >
       {/* Status Chip */}
@@ -199,7 +205,7 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
                 height: 24, 
                 fontSize: 11, 
                 fontWeight: 600, 
-                bgcolor: statusConfig.bg, 
+                bgcolor: alpha(statusConfig.color, 0.1), 
                 color: statusConfig.color,
                 borderRadius: '6px'
             }} 
@@ -207,24 +213,24 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
       </Box>
 
       {/* Name */}
-      <Typography variant="body2" sx={{ flex: 1, fontWeight: 500, color: '#1f2937', fontSize: 14 }}>
+      <Typography variant="body2" sx={{ flex: 1, fontWeight: 500, color: 'text.primary', fontSize: 14 }}>
         {partner.name}
       </Typography>
 
       {/* Features */}
       <Box sx={{ flex: 1.5, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5, mr: 1 }}>
         {features.length === 0 ? (
-          <Typography variant="caption" sx={{ color: '#d1d5db', fontStyle: 'italic' }}>—</Typography>
+          <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>—</Typography>
         ) : (
           <>
             {visibleFeatures.map(f => {
-              const colors = CATEGORY_COLOR[f.category] || { bg: '#f3f4f6', color: '#6b7280' };
+              const color = CATEGORY_COLOR[f.category] || '#6b7280';
               return (
                 <Chip
                   key={f.id}
                   label={f.name}
                   size="small"
-                  sx={{ height: 20, fontSize: 10, fontWeight: 600, bgcolor: colors.bg, color: colors.color, borderRadius: '4px' }}
+                  sx={{ height: 20, fontSize: 10, fontWeight: 600, bgcolor: alpha(color, 0.1), color: color, borderRadius: '4px' }}
                 />
               );
             })}
@@ -233,7 +239,7 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
                 <Chip
                   label={`+${extraCount}`}
                   size="small"
-                  sx={{ height: 20, fontSize: 10, fontWeight: 700, bgcolor: '#f3f4f6', color: '#6b7280', borderRadius: '4px', cursor: 'default' }}
+                  sx={{ height: 20, fontSize: 10, fontWeight: 700, bgcolor: 'action.hover', color: 'text.secondary', borderRadius: '4px', cursor: 'default' }}
                 />
               </Tooltip>
             )}
@@ -242,7 +248,7 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
       </Box>
 
       {/* Notes */}
-      <Typography variant="body2" sx={{ flex: 1, color: '#6b7280', fontSize: 13, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', mr: 2 }}>
+      <Typography variant="body2" sx={{ flex: 1, color: 'text.secondary', fontSize: 13, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', mr: 2 }}>
         {partner.notes || '-'}
       </Typography>
 
@@ -253,16 +259,16 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
                    size="small" 
                    icon={<PersonOutlineIcon sx={{ fontSize: '16px !important' }} />} 
                    label={partner.integrator.name || partner.integrator.email || 'User'} 
-                   sx={{ bgcolor: '#f1f5f9', color: '#475569', fontWeight: 500 }} 
+                   sx={{ bgcolor: 'action.hover', color: 'text.primary', fontWeight: 500 }} 
                />
            ) : (
-               <Typography variant="caption" sx={{ color: '#9ca3af', fontStyle: 'italic' }}>Unassigned</Typography>
+               <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>Unassigned</Typography>
            )}
       </Box>
 
       {/* Date */}
       <Box sx={{ width: 100, textAlign: 'right', mr: 2 }}>
-        <Typography variant="caption" sx={{ color: '#6b7280' }}>
+        <Typography variant="caption" sx={{ color: 'text.disabled' }}>
            {partner.updatedAt ? format(new Date(partner.updatedAt), 'MMM d') : '-'}
         </Typography>
       </Box>
@@ -293,10 +299,10 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
                     height: 28, 
                     fontSize: 11, 
                     fontWeight: 700, 
-                    boxShadow: '0 1px 2px rgba(59, 130, 246, 0.3)',
+                    boxShadow: mode === 'light' ? '0 1px 2px rgba(59, 130, 246, 0.3)' : 'none',
                     px: 1.5,
-                    bgcolor: '#3b82f6',
-                    '&:hover': { bgcolor: '#2563eb', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.4)' }
+                    bgcolor: 'primary.main',
+                    '&:hover': { bgcolor: 'primary.dark', boxShadow: mode === 'light' ? '0 2px 4px rgba(37, 99, 235, 0.4)' : 'none' }
                 }}
             >
                 Start Onboarding
@@ -306,11 +312,11 @@ function PartnerRow({ partner, onEdit, onDelete, onStartOnboarding }: {
             size="small" 
             onClick={(e) => { e.stopPropagation(); setAnchorEl(e.currentTarget); }}
             sx={{ 
-                bgcolor: partner.status === 'DRAFT' ? 'transparent' : 'transparent',
-                '&:hover': { bgcolor: '#f3f4f6' }
+                bgcolor: 'transparent',
+                '&:hover': { bgcolor: 'action.hover' }
             }}
         >
-          <MoreHorizIcon sx={{ fontSize: 18, color: '#9ca3af' }} />
+          <MoreHorizIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
         </IconButton>
         <Menu
             anchorEl={anchorEl}

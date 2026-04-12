@@ -14,6 +14,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     try {
         const { id } = await params;
         const body = await request.json();
+        console.log(`PUT /api/partners/${id}:`, JSON.stringify(body));
 
         // Use Partial of CreateSchema to allow updating single fields (like status or notes)
         const UpdateSchema = CreatePartnerSchema.partial();
@@ -41,7 +42,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 data.boardStage = 'INITIATION';
             }
         }
-        
+
         // Logic 2: DEPLOYED dragging changes status to LIVE automatically
         if (data.boardStage === 'DEPLOYED' && existingPartner.status !== 'LIVE') {
             data.status = 'LIVE';
@@ -66,22 +67,43 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         if (session && session.id) {
             const changedFields: string[] = [];
             for (const key of Object.keys(restData)) {
-                if (JSON.stringify((restData as any)[key]) !== JSON.stringify((existingPartner as any)[key])) {
+                const newVal = (restData as any)[key];
+                const oldVal = (existingPartner as any)[key];
+                
+                // Compare values, handling potential nulls or different types from JSON/DB
+                if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
                     changedFields.push(key);
                 }
             }
             if (featureIds !== undefined) changedFields.push('features');
 
             if (changedFields.length > 0) {
+                let actionType = 'UPDATE_PARTNER';
+                let metadata: any = { 
+                    name: partner.name, 
+                    updatedFields: changedFields 
+                };
+
+                if (changedFields.includes('boardStage')) {
+                    actionType = 'MOVE_PARTNER';
+                    metadata.from = (existingPartner as any).boardStage;
+                    metadata.to = data.boardStage;
+                } else if (changedFields.includes('kanbanOrder') && changedFields.length === 1) {
+                    actionType = 'REORDER_PARTNER';
+                    metadata.stage = (partner as any).boardStage;
+                } else {
+                    metadata.details = restData;
+                }
+
                 await prisma.activityLog.create({
-                     data: {
-                         userId: session.id as string,
-                         actionType: 'UPDATE_PARTNER',
-                         entityType: 'partner',
-                         entityId: partner.id,
-                         metadata: { updatedFields: changedFields, details: restData }
-                     }
-                 });
+                    data: {
+                        userId: session.id as string,
+                        actionType,
+                        entityType: 'partner',
+                        entityId: partner.id,
+                        metadata
+                    }
+                });
             }
         }
 
@@ -112,14 +134,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         const session = await getSession();
         if (session && session.id) {
             await prisma.activityLog.create({
-                 data: {
-                     userId: session.id as string,
-                     actionType: 'DELETE_PARTNER',
-                     entityType: 'partner',
-                     entityId: id,
-                     metadata: { name: existingPartner.name }
-                 }
-             });
+                data: {
+                    userId: session.id as string,
+                    actionType: 'DELETE_PARTNER',
+                    entityType: 'partner',
+                    entityId: id,
+                    metadata: { name: existingPartner.name }
+                }
+            });
         }
 
         return NextResponse.json({ success: true });

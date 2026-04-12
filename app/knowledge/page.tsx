@@ -17,6 +17,8 @@ import {
   Skeleton,
   Chip,
   Tooltip,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -28,6 +30,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { useColorMode } from '@/app/providers/ThemeProvider';
 import { KnowledgeNote, CreateNoteInput } from './types';
 import NoteDialog from './components/NoteDialog';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
@@ -173,10 +176,12 @@ export default function KnowledgePage() {
     });
   };
 
+  const theme = useTheme();
+  const { mode } = useColorMode();
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       
       {/* Header Toolbar */}
       <Box sx={{ 
@@ -185,12 +190,14 @@ export default function KnowledgePage() {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between', 
-          borderBottom: '1px solid #e5e7eb',
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
           minHeight: 60,
           flexShrink: 0,
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="h6" fontWeight={700} sx={{ color: '#1f2937' }}>
+          <Typography variant="h6" fontWeight={700} sx={{ color: 'text.primary' }}>
             Knowledge Base
           </Typography>
           <Button
@@ -200,8 +207,8 @@ export default function KnowledgePage() {
             onClick={() => { setEditingNote(null); setDialogOpen(true); }}
             sx={{
               textTransform: 'none', fontWeight: 600, borderRadius: 2,
-              borderColor: '#e5e7eb', color: '#374151',
-              '&:hover': { bgcolor: '#f9fafb', borderColor: '#d1d5db' }
+              borderColor: 'divider', color: 'text.primary',
+              '&:hover': { bgcolor: 'action.hover', borderColor: 'divider' }
             }}
           >
             New Note
@@ -210,7 +217,7 @@ export default function KnowledgePage() {
 
         {/* Search */}
         <Box sx={{ position: 'relative' }}>
-          <SearchIcon sx={{ fontSize: 18, color: '#9ca3af', position: 'absolute', top: 8, left: 8 }} />
+          <SearchIcon sx={{ fontSize: 18, color: 'text.disabled', position: 'absolute', top: 8, left: 8 }} />
           <TextField
             placeholder="Search notes..."
             variant="outlined"
@@ -220,10 +227,10 @@ export default function KnowledgePage() {
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2, paddingLeft: 3.5, height: 32, width: 220, fontSize: 13,
-                bgcolor: '#f9fafb',
+                bgcolor: 'action.hover',
                 '& fieldset': { borderColor: 'transparent' },
-                '&:hover fieldset': { borderColor: '#e5e7eb' },
-                '&.Mui-focused fieldset': { borderColor: '#3b82f6' }
+                '&:hover fieldset': { borderColor: 'divider' },
+                '&.Mui-focused fieldset': { borderColor: 'primary.main' }
               }
             }}
           />
@@ -232,17 +239,17 @@ export default function KnowledgePage() {
 
       {/* Tag Filter Bar */}
       {allTags.length > 0 && (
-        <Box sx={{ px: 3, py: 1.5, display: 'flex', gap: 0.75, flexWrap: 'wrap', borderBottom: '1px solid #f3f4f6', bgcolor: '#fafafa', flexShrink: 0 }}>
+        <Box sx={{ px: 3, py: 1.5, display: 'flex', gap: 0.75, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', flexShrink: 0 }}>
           <Chip
             label="All"
             size="small"
             onClick={() => setActiveTag(null)}
             sx={{
               height: 24, fontSize: 11, fontWeight: 600, borderRadius: '6px',
-              bgcolor: activeTag === null ? '#1f2937' : '#f3f4f6',
-              color: activeTag === null ? 'white' : '#6b7280',
+              bgcolor: activeTag === null ? 'text.primary' : 'action.hover',
+              color: activeTag === null ? 'background.paper' : 'text.secondary',
               cursor: 'pointer',
-              '&:hover': { bgcolor: activeTag === null ? '#374151' : '#e5e7eb' }
+              '&:hover': { bgcolor: activeTag === null ? 'text.secondary' : 'action.selected' }
             }}
           />
           {allTags.map(tag => (
@@ -251,13 +258,14 @@ export default function KnowledgePage() {
               label={`#${tag}`}
               size="small"
               onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-              sx={{
+            sx={{
                 height: 24, fontSize: 11, fontWeight: 600, borderRadius: '6px',
-                bgcolor: activeTag === tag ? '#eff6ff' : '#f3f4f6',
-                color: activeTag === tag ? '#2563eb' : '#6b7280',
+                bgcolor: activeTag === tag ? alpha(theme.palette.primary.main, 0.1) : 'action.hover',
+                color: activeTag === tag ? 'primary.main' : 'text.secondary',
                 cursor: 'pointer',
-                border: activeTag === tag ? '1px solid #bfdbfe' : '1px solid transparent',
-                '&:hover': { bgcolor: '#eff6ff', color: '#2563eb' }
+                border: '1px solid',
+                borderColor: activeTag === tag ? alpha(theme.palette.primary.main, 0.2) : 'transparent',
+                '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.15), color: 'primary.main' }
               }}
             />
           ))}
@@ -265,19 +273,19 @@ export default function KnowledgePage() {
       )}
 
       {/* Table Header */}
-      <Box sx={{ display: 'flex', px: 3, py: 1, borderBottom: '1px solid #e5e7eb', bgcolor: '#f9fafb', flexShrink: 0 }}>
+      <Box sx={{ display: 'flex', px: 3, py: 1, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.default', flexShrink: 0 }}>
         <Box sx={{ width: 32, mr: 1 }} />
         <Box sx={{ flex: 2 }}>
-          <Typography variant="caption" fontWeight={600} sx={{ color: '#6b7280' }}>TITLE</Typography>
+          <Typography variant="caption" fontWeight={600} sx={{ color: 'text.secondary' }}>TITLE</Typography>
         </Box>
         <Box sx={{ flex: 3, display: { xs: 'none', md: 'block' } }}>
-          <Typography variant="caption" fontWeight={600} sx={{ color: '#6b7280' }}>PREVIEW</Typography>
+          <Typography variant="caption" fontWeight={600} sx={{ color: 'text.secondary' }}>PREVIEW</Typography>
         </Box>
         <Box sx={{ width: 220 }}>
-          <Typography variant="caption" fontWeight={600} sx={{ color: '#6b7280' }}>TAGS</Typography>
+          <Typography variant="caption" fontWeight={600} sx={{ color: 'text.secondary' }}>TAGS</Typography>
         </Box>
         <Box sx={{ width: 100, textAlign: 'right' }}>
-          <Typography variant="caption" fontWeight={600} sx={{ color: '#6b7280' }}>UPDATED</Typography>
+          <Typography variant="caption" fontWeight={600} sx={{ color: 'text.secondary' }}>UPDATED</Typography>
         </Box>
         <Box sx={{ width: 88 }} />
       </Box>
@@ -287,7 +295,7 @@ export default function KnowledgePage() {
         {isLoading ? (
           <Box>
             {[...Array(8)].map((_, i) => (
-              <Box key={i} sx={{ display: 'flex', px: 3, py: 2, borderBottom: '1px solid #f3f4f6', alignItems: 'center', gap: 2 }}>
+              <Box key={i} sx={{ display: 'flex', px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider', alignItems: 'center', gap: 2 }}>
                 <Skeleton variant="circular" width={20} height={20} />
                 <Skeleton variant="text" width="25%" />
                 <Skeleton variant="text" width="35%" sx={{ ml: 2 }} />
@@ -328,7 +336,7 @@ export default function KnowledgePage() {
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
         rowsPerPageOptions={[25, 50, 100]}
-        sx={{ borderTop: '1px solid #e5e7eb', flexShrink: 0 }}
+        sx={{ borderTop: '1px solid', borderColor: 'divider', flexShrink: 0 }}
       />
 
       {/* Create/Edit Dialog */}
@@ -353,7 +361,7 @@ export default function KnowledgePage() {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="h6" fontWeight={700}>{viewNote.title}</Typography>
                          {viewNote.isPinned && (
-                            <Box component="span" sx={{ fontSize: 12, bgcolor: '#eff6ff', color: '#3b82f6', px: 1, py: 0.5, borderRadius: 1 }}>
+                            <Box component="span" sx={{ fontSize: 12, bgcolor: alpha(theme.palette.warning.main, 0.1), color: 'warning.main', px: 1, py: 0.5, borderRadius: 1 }}>
                                 Pinned
                             </Box>
                          )}
@@ -363,14 +371,14 @@ export default function KnowledgePage() {
                       <Box sx={{ mb: 2 }}>
                           {viewNote.tags.map(tag => (
                               <Box component="span" key={tag} sx={{ 
-                                  mr: 1, bgcolor: '#f1f5f9', color: '#64748b',
+                                  mr: 1, bgcolor: 'action.hover', color: 'text.secondary',
                                   px: 1, py: 0.5, borderRadius: 1, fontSize: 12, fontWeight: 600
                               }}>
                                   #{tag}
                               </Box>
                           ))}
                       </Box>
-                      <DialogContentText sx={{ whiteSpace: 'pre-wrap', color: '#374151', fontSize: 16, lineHeight: 1.6 }}>
+                      <DialogContentText sx={{ whiteSpace: 'pre-wrap', color: 'text.primary', fontSize: 16, lineHeight: 1.6 }}>
                           {viewNote.content}
                       </DialogContentText>
                   </DialogContent>
@@ -409,6 +417,8 @@ function NoteRow({ note, onView, onEdit, onDelete, onTogglePin }: {
   onDelete: (id: string) => void;
   onTogglePin: (note: KnowledgeNote) => void;
 }) {
+  const theme = useTheme();
+  const { mode } = useColorMode();
   const preview = note.content.replace(/\n/g, ' ').slice(0, 100);
 
   return (
@@ -418,28 +428,29 @@ function NoteRow({ note, onView, onEdit, onDelete, onTogglePin }: {
         alignItems: 'center',
         px: 3,
         py: 1.5,
-        borderBottom: '1px solid #f3f4f6',
-        bgcolor: note.isPinned ? '#fffbeb' : 'white',
-        '&:hover': { bgcolor: note.isPinned ? '#fef3c7' : '#f9fafb', '& .note-actions': { opacity: 1 } },
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        bgcolor: note.isPinned ? (mode === 'light' ? '#fffbeb' : alpha(theme.palette.warning.main, 0.05)) : 'background.paper',
+        '&:hover': { bgcolor: note.isPinned ? (mode === 'light' ? '#fef3c7' : alpha(theme.palette.warning.main, 0.1)) : 'action.hover', '& .note-actions': { opacity: 1 } },
         cursor: 'pointer',
       }}
       onClick={() => onView(note)}
     >
       {/* Pin indicator */}
       <Box sx={{ width: 32, mr: 1, display: 'flex', alignItems: 'center' }}>
-        {note.isPinned && <PushPinIcon sx={{ fontSize: 14, color: '#f59e0b' }} />}
+        {note.isPinned && <PushPinIcon sx={{ fontSize: 14, color: 'warning.main' }} />}
       </Box>
 
       {/* Title */}
       <Box sx={{ flex: 2 }}>
-        <Typography variant="body2" fontWeight={600} sx={{ color: '#1f2937', fontSize: 14, lineHeight: 1.4 }}>
+        <Typography variant="body2" fontWeight={600} sx={{ color: 'text.primary', fontSize: 14, lineHeight: 1.4 }}>
           {note.title}
         </Typography>
       </Box>
 
       {/* Preview */}
       <Box sx={{ flex: 3, display: { xs: 'none', md: 'block' }, mr: 2 }}>
-        <Typography variant="body2" sx={{ color: '#9ca3af', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <Typography variant="body2" sx={{ color: 'text.disabled', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {preview}{note.content.length > 100 ? '...' : ''}
         </Typography>
       </Box>
@@ -451,7 +462,7 @@ function NoteRow({ note, onView, onEdit, onDelete, onTogglePin }: {
             key={tag}
             component="span"
             sx={{
-              px: 0.75, py: 0.25, bgcolor: '#f1f5f9', color: '#64748b',
+              px: 0.75, py: 0.25, bgcolor: 'action.hover', color: 'text.secondary',
               borderRadius: '4px', fontSize: 11, fontWeight: 600,
             }}
           >
@@ -469,7 +480,7 @@ function NoteRow({ note, onView, onEdit, onDelete, onTogglePin }: {
 
       {/* Date */}
       <Box sx={{ width: 100, textAlign: 'right' }}>
-        <Typography variant="caption" sx={{ color: '#9ca3af' }}>
+        <Typography variant="caption" sx={{ color: 'text.disabled' }}>
           {format(new Date(note.updatedAt), 'MMM d, yyyy')}
         </Typography>
       </Box>
@@ -483,8 +494,8 @@ function NoteRow({ note, onView, onEdit, onDelete, onTogglePin }: {
         <Tooltip title={note.isPinned ? 'Unpin' : 'Pin'}>
           <IconButton size="small" onClick={() => onTogglePin(note)}>
             {note.isPinned
-              ? <PushPinIcon sx={{ fontSize: 15, color: '#f59e0b' }} />
-              : <PushPinOutlinedIcon sx={{ fontSize: 15, color: '#9ca3af' }} />
+              ? <PushPinIcon sx={{ fontSize: 15, color: 'warning.main' }} />
+              : <PushPinOutlinedIcon sx={{ fontSize: 15, color: 'text.disabled' }} />
             }
           </IconButton>
         </Tooltip>

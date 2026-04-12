@@ -80,7 +80,7 @@ export default function PartnerDialog({
       </Box>
 
       {/* Content */}
-      <Box sx={{ flex: 1, overflowY: 'auto', p: 3, bgcolor: '#f8fafc' }}>
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 3, bgcolor: 'background.default' }}>
         <PartnerForm
           onSubmit={onSubmit}
           initialData={initialData}

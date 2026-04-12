@@ -146,10 +146,10 @@ export default function PeoplePage() {
             {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
                 <Box>
-                    <Typography variant="h4" fontWeight={800} sx={{ color: '#111827', mb: 1, letterSpacing: '-0.02em' }}>
+                    <Typography variant="h4" fontWeight={800} sx={{ color: 'text.primary', mb: 1, letterSpacing: '-0.02em' }}>
                         The Rolodex
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#6b7280', fontSize: 16 }}>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', fontSize: 16 }}>
                         Centralized contact management for partners and internal stakeholders.
                     </Typography>
                 </Box>
@@ -158,8 +158,9 @@ export default function PeoplePage() {
                     startIcon={<AddIcon />}
                     onClick={handleCreate}
                     sx={{ 
-                        bgcolor: '#111827', 
-                        '&:hover': { bgcolor: '#374151' },
+                        bgcolor: 'text.primary', 
+                        color: 'background.paper',
+                        '&:hover': { bgcolor: 'text.secondary' },
                         textTransform: 'none',
                         borderRadius: 3,
                         px: 3,
@@ -181,14 +182,14 @@ export default function PeoplePage() {
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
                 slotProps={{
                     input: {
-                        startAdornment: <SearchIcon sx={{ color: '#9ca3af', mr: 2 }} />,
-                        sx: { borderRadius: 3, bgcolor: 'white', pl: 2, height: 50 }
+                        startAdornment: <SearchIcon sx={{ color: 'text.disabled', mr: 2 }} />,
+                        sx: { borderRadius: 3, bgcolor: 'background.paper', pl: 2, height: 50 }
                     }
                 }}
                 sx={{ 
                     mb: 4, 
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e5e7eb' },
-                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#d1d5db' },
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'text.disabled' },
                     maxWidth: 500
                 }}
             />
@@ -198,8 +199,9 @@ export default function PeoplePage() {
                 elevation={0} 
                 sx={{ 
                     borderRadius: 4, 
-                    border: '1px solid #e5e7eb',
-                    bgcolor: 'white',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
                     overflow: 'hidden' 
                 }}
             >
@@ -208,9 +210,10 @@ export default function PeoplePage() {
                     display: 'flex', 
                     py: 2, 
                     px: 3, 
-                    borderBottom: '1px solid #e5e7eb', 
-                    bgcolor: '#f9fafb',
-                    color: '#6b7280'
+                    borderBottom: '1px solid', 
+                    borderColor: 'divider',
+                    bgcolor: 'background.default',
+                    color: 'text.secondary'
                 }}>
                     <Typography variant="caption" fontWeight={600} sx={{ flex: 2 }}>NAME & ROLE</Typography>
                     <Typography variant="caption" fontWeight={600} sx={{ flex: 2 }}>CONTACT INFO</Typography>
@@ -225,7 +228,7 @@ export default function PeoplePage() {
                          ))}
                     </Box>
                 ) : people.length === 0 ? (
-                     <Box sx={{ textAlign: 'center', py: 8, color: '#9ca3af' }}>
+                     <Box sx={{ textAlign: 'center', py: 8, color: 'text.disabled' }}>
                         <PersonIcon sx={{ fontSize: 40, mb: 1, opacity: 0.5 }} />
                         <Typography variant="body2">No contacts found</Typography>
                     </Box>
@@ -251,7 +254,7 @@ export default function PeoplePage() {
                     rowsPerPage={rowsPerPage}
                     onRowsPerPageChange={handleRowsPerPageChange}
                     rowsPerPageOptions={[10, 25, 50]}
-                    sx={{ borderTop: '1px solid #e5e7eb' }}
+                    sx={{ borderTop: '1px solid', borderColor: 'divider' }}
                 />
             </Paper>
 
@@ -276,9 +279,10 @@ function PersonRow({ person, onEdit, onDelete }: { person: Person; onEdit: () =>
             display: 'flex', 
             alignItems: 'center', 
             p: 3, 
-            borderBottom: '1px solid #f3f4f6',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
             '&:last-child': { borderBottom: 'none' },
-            '&:hover': { bgcolor: '#fbfbfb', '& .row-actions': { opacity: 1 } },
+            '&:hover': { bgcolor: 'action.hover', '& .row-actions': { opacity: 1 } },
             transition: 'background-color 0.15s'
         }}>
             {/* Name & Role */}
@@ -294,10 +298,10 @@ function PersonRow({ person, onEdit, onDelete }: { person: Person; onEdit: () =>
                     {person.name.charAt(0)}
                 </Avatar>
                 <Box>
-                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#111827' }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'text.primary' }}>
                         {person.name}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#6b7280', fontSize: 13 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: 13 }}>
                         {person.role}
                     </Typography>
                 </Box>
@@ -306,26 +310,26 @@ function PersonRow({ person, onEdit, onDelete }: { person: Person; onEdit: () =>
             {/* Contact Info */}
             <Box sx={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 {person.email && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#4b5563', fontSize: 13 }}>
-                        <EmailIcon sx={{ fontSize: 16, color: '#9ca3af' }} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', fontSize: 13 }}>
+                        <EmailIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
                         <Typography noWrap variant="body2" sx={{ fontSize: 13 }}>{person.email}</Typography>
                     </Box>
                 )}
                 {person.phone && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#4b5563', fontSize: 13 }}>
-                        <PhoneIcon sx={{ fontSize: 16, color: '#9ca3af' }} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', fontSize: 13 }}>
+                        <PhoneIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
                         <Typography variant="body2" sx={{ fontSize: 13 }}>{person.phone}</Typography>
                     </Box>
                 )}
                 {!person.email && !person.phone && (
-                    <Typography variant="caption" sx={{ color: '#d1d5db', fontStyle: 'italic' }}>No contact info</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>No contact info</Typography>
                 )}
             </Box>
 
             {/* Notes */}
             <Box sx={{ flex: 3, pr: 2 }}>
                 {person.notes ? (
-                    <Typography variant="body2" sx={{ color: '#4b5563', fontSize: 13, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: 13, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {person.notes}
                     </Typography>
                 ) : (
@@ -338,7 +342,7 @@ function PersonRow({ person, onEdit, onDelete }: { person: Person; onEdit: () =>
             {/* Actions */}
             <Box className="row-actions" sx={{ width: 40, display: 'flex', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}>
                 <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
-                    <MoreHorizIcon sx={{ color: '#9ca3af', fontSize: 20 }} />
+                    <MoreHorizIcon sx={{ color: 'text.disabled', fontSize: 20 }} />
                 </IconButton>
                 <Menu
                     anchorEl={anchorEl}
@@ -451,7 +455,7 @@ function PeopleDialog({
                  </Box>
              </DialogContent>
              <DialogActions sx={{ p: 3, pt: 1 }}>
-                 <Button onClick={onClose} disabled={loading} sx={{ borderRadius: 2, color: '#6b7280', textTransform: 'none' }}>
+                 <Button onClick={onClose} disabled={loading} sx={{ borderRadius: 2, color: 'text.secondary', textTransform: 'none' }}>
                      Cancel
                  </Button>
                  <Button 
@@ -460,11 +464,12 @@ function PeopleDialog({
                     disabled={loading || !name || !role} 
                     startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
                     sx={{ 
-                        bgcolor: 'black', 
+                        bgcolor: 'text.primary', 
+                        color: 'background.paper',
                         borderRadius: 2, 
                         textTransform: 'none',
                         px: 4,
-                        '&:hover': { bgcolor: '#374151' }
+                        '&:hover': { bgcolor: 'text.secondary' }
                     }}
                 >
                      {loading ? 'Saving...' : (isEdit ? 'Update Contact' : 'Create Contact')}

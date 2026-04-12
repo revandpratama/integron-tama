@@ -17,12 +17,15 @@ import {
   Avatar,
   Chip,
   Checkbox,
-  FormControlLabel
+  FormControlLabel,
+  alpha,
+  useTheme
 } from '@mui/material';
 import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
 import { format } from 'date-fns';
 
 export default function ActivityLogPage() {
+  const theme = useTheme();
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
     pageSize: 10,
@@ -106,11 +109,11 @@ export default function ActivityLogPage() {
       width: 220,
       renderCell: (params) => {
           const getActionStyle = (action: string) => {
-              if (action.includes('CREATE')) return { bgcolor: '#e6f4ea', color: '#137333', border: '1px solid #ceead6' };
-              if (action.includes('UPDATE')) return { bgcolor: '#e8f0fe', color: '#1a73e8', border: '1px solid #d2e3fc' };
-              if (action.includes('DELETE')) return { bgcolor: '#fce8e6', color: '#c5221f', border: '1px solid #fad2cf' };
-              if (action.includes('PIN')) return { bgcolor: '#fef7e0', color: '#b06000', border: '1px solid #feefc3' };
-              return { bgcolor: '#f1f3f4', color: '#3c4043', border: '1px solid #dadce0' };
+              if (action.includes('CREATE')) return { bgcolor: alpha('#137333', 0.1), color: '#137333', border: `1px solid ${alpha('#137333', 0.2)}` };
+              if (action.includes('UPDATE')) return { bgcolor: alpha('#1a73e8', 0.1), color: '#1a73e8', border: `1px solid ${alpha('#1a73e8', 0.2)}` };
+              if (action.includes('DELETE')) return { bgcolor: alpha('#c5221f', 0.1), color: '#c5221f', border: `1px solid ${alpha('#c5221f', 0.2)}` };
+              if (action.includes('PIN')) return { bgcolor: alpha('#b06000', 0.1), color: '#b06000', border: `1px solid ${alpha('#b06000', 0.2)}` };
+              return { bgcolor: 'action.hover', color: 'text.primary', border: '1px solid', borderColor: 'divider' };
           };
           return (
               <Box display="flex" alignItems="center" height="100%">
@@ -148,7 +151,9 @@ export default function ActivityLogPage() {
                 if (action.startsWith('UPDATE_') && meta.updatedFields) return `Updated: ${meta.updatedFields.join(', ')}`;
                 if (action === 'PIN_KNOWLEDGE') return meta.isPinned ? 'Pinned to Dashboard' : 'Unpinned from Dashboard';
                 if (action === 'UPDATE_PARTNER_STATUS') return `Status changed from ${meta.from || 'unknown'} to ${meta.to || 'unknown'}`;
-                if (action === 'MOVE_PARTNER') return `Stage moved from ${meta.from || 'unknown'} to ${meta.to || 'unknown'}`;
+                if (action === 'MOVE_PARTNER') return `Moved ${meta.name || 'Partner'} from ${meta.from || 'unknown'} to ${meta.to || 'unknown'}`;
+                if (action === 'REORDER_PARTNER') return `Reordered ${meta.name || 'Partner'} in ${meta.stage || 'column'}`;
+                if (action === 'PAY_QRIS') return `Paid IDR ${Number(meta.amount || 0).toLocaleString('id-ID')} to ${meta.merchantName || 'Merchant'}`;
                 if (meta.notes) return 'Notes updated';
                 return 'Details updated';
             };
@@ -181,12 +186,12 @@ export default function ActivityLogPage() {
   };
 
   return (
-    <Box p={4} sx={{ maxWidth: 1600, margin: '0 auto' }}>
-      <Typography variant="h4" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.5px', color: '#111827', mb: 4 }}>
+    <Box p={4} sx={{ maxWidth: 1600, margin: '0 auto', bgcolor: 'background.default', minHeight: '100%' }}>
+      <Typography variant="h4" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.5px', color: 'text.primary', mb: 4 }}>
         System Activity Audit
       </Typography>
 
-      <Card sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.03)', border: '1px solid #f3f4f6' }}>
+      <Card sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.03)', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
         <Box component="form" onSubmit={handleSearchSubmit} display="flex" gap={2} flexWrap="wrap">
             <TextField 
                 label="Search" 
@@ -206,6 +211,9 @@ export default function ActivityLogPage() {
                 <MenuItem value="">All Actions</MenuItem>
                 <MenuItem value="CREATE_PARTNER">Create Partner</MenuItem>
                 <MenuItem value="UPDATE_PARTNER">Update Partner</MenuItem>
+                <MenuItem value="MOVE_PARTNER">Move Partner (Stage)</MenuItem>
+                <MenuItem value="REORDER_PARTNER">Reorder Partner (Vertical)</MenuItem>
+                <MenuItem value="PAY_QRIS">QRIS Payment</MenuItem>
                 <MenuItem value="DELETE_PARTNER">Delete Partner</MenuItem>
                 <MenuItem value="CREATE_PERSON">Create Person</MenuItem>
                 <MenuItem value="UPDATE_PERSON">Update Person</MenuItem>
@@ -274,7 +282,7 @@ export default function ActivityLogPage() {
         </Box>
       </Card>
 
-      <Card sx={{ height: 650, borderRadius: 3, boxShadow: '0px 8px 30px rgba(0, 0, 0, 0.04)', border: '1px solid #f3f4f6' }}>
+      <Card sx={{ height: 650, borderRadius: 3, boxShadow: '0px 8px 30px rgba(0, 0, 0, 0.04)', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
         <DataGrid
           rows={data?.data || []}
           columns={columns}
@@ -289,21 +297,24 @@ export default function ActivityLogPage() {
           sx={{
             border: 'none',
             '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: '#ffffff',
-                borderBottom: '2px solid #f3f4f6',
-                color: '#6b7280',
+                backgroundColor: 'background.paper',
+                borderBottom: '2px solid',
+                borderColor: 'divider',
+                color: 'text.secondary',
                 fontSize: 12,
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px'
             },
             '& .MuiDataGrid-cell': {
-                borderBottom: '1px solid #f9fafb',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
             },
             '& .MuiDataGrid-row:hover': {
-                backgroundColor: '#f9fafb',
+                backgroundColor: 'action.hover',
             },
             '& .MuiDataGrid-footerContainer': {
-                borderTop: '2px solid #f3f4f6',
+                borderTop: '2px solid',
+                borderColor: 'divider',
             }
           }}
         />
@@ -312,7 +323,7 @@ export default function ActivityLogPage() {
       <Dialog open={!!modalData} onClose={() => setModalData(null)} maxWidth="sm" fullWidth>
           <DialogTitle>Metadata Details</DialogTitle>
           <DialogContent dividers>
-              <Box component="pre" sx={{ bgcolor: '#f3f4f6', p: 2, borderRadius: 1, overflowX: 'auto', fontSize: 13, m: 0 }}>
+              <Box component="pre" sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 1, overflowX: 'auto', fontSize: 13, m: 0, color: 'text.primary' }}>
                   {JSON.stringify(modalData, null, 2)}
               </Box>
           </DialogContent>

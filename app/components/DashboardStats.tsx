@@ -257,7 +257,8 @@ export default function DashboardStats() {
                                </IconButton>
                            }
                            sx={{ 
-                              borderBottom: '1px solid #f3f4f6',
+                              borderBottom: '1px solid',
+                              borderColor: 'divider',
                               '&:last-child': { borderBottom: 'none' },
                               py: 0.5,
                            }}
@@ -317,7 +318,8 @@ export default function DashboardStats() {
                             sx={{ 
                                 flexDirection: 'column', 
                                 alignItems: 'flex-start',
-                                borderBottom: '1px solid #f3f4f6',
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
                                 '&:last-child': { borderBottom: 'none' },
                                 py: 1.5,
                                 px: 1

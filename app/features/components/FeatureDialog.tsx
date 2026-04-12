@@ -72,7 +72,7 @@ function ArrayInput({
                             value={val}
                             InputProps={{
                                 readOnly: true,
-                                sx: { bgcolor: '#f1f5f9', fontSize: 13 }
+                                sx: { bgcolor: 'action.hover', fontSize: 13 }
                             }}
                          />
                          <IconButton size="small" onClick={() => handleRemove(idx)} color="error">
@@ -265,7 +265,7 @@ export default function FeatureDialog({
       </Box>
 
       {/* Content */}
-      <Box sx={{ flex: 1, overflowY: 'auto', p: 3, bgcolor: '#f8fafc' }}>
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 3, bgcolor: 'background.default' }}>
          <FeatureForm 
             initialData={initialData} 
             onSubmit={onSubmit} 

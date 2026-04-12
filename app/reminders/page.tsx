@@ -110,7 +110,7 @@ export default function RemindersPage() {
   };
 
   return (
-    <Box sx={{ p: 4 }}>
+    <Box sx={{ p: 4, bgcolor: 'background.default', minHeight: '100vh' }}>
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
             <Typography variant="h4" fontWeight={700}>Reminders</Typography>
@@ -120,7 +120,7 @@ export default function RemindersPage() {
             variant="contained" 
             startIcon={<AddIcon />} 
             onClick={() => setOpen(true)}
-            sx={{ bgcolor: '#0f172a', textTransform: 'none', borderRadius: 2 }}
+            sx={{ bgcolor: 'text.primary', color: 'background.paper', textTransform: 'none', borderRadius: 2, '&:hover': { bgcolor: 'text.secondary' } }}
         >
           New Reminder
         </Button>
@@ -131,13 +131,15 @@ export default function RemindersPage() {
           <Grid size={{ xs: 12, md: 6, lg: 4 }} key={reminder.id}>
             <Card sx={{ 
                 height: '100%', 
+                bgcolor: 'background.paper',
                 opacity: reminder.isCompleted ? 0.6 : 1,
                 borderLeftWidth: reminder.isCompleted ? 0 : 6,
                 borderLeftStyle: 'solid',
                 borderLeftColor: 
                     reminder.level === 'Critical' ? 'error.main' : 
                     reminder.level === 'Important' ? 'warning.main' : 'info.main',
-                position: 'relative'
+                position: 'relative',
+                boxShadow: (theme) => theme.shadows[1],
             }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -251,8 +253,8 @@ export default function RemindersPage() {
                 </Stack>
             </DialogContent>
             <DialogActions sx={{ p: 2.5 }}>
-                <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
-                <Button type="submit" variant="contained" sx={{ bgcolor: '#0f172a' }}>Set Reminder</Button>
+                <Button onClick={() => setOpen(false)} color="inherit" sx={{ borderRadius: 2, textTransform: 'none' }}>Cancel</Button>
+                <Button type="submit" variant="contained" sx={{ bgcolor: 'text.primary', color: 'background.paper', borderRadius: 2, textTransform: 'none', '&:hover': { bgcolor: 'text.secondary' } }}>Set Reminder</Button>
             </DialogActions>
         </form>
       </Dialog>
@@ -261,38 +263,38 @@ export default function RemindersPage() {
       {detailReminder && (
           <Dialog open={Boolean(detailReminder)} onClose={() => setDetailReminder(null)} fullWidth maxWidth="sm">
               <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {LEVEL_ICONS[detailReminder.level]}
-                  <Typography variant="h6" fontWeight={700}>{detailReminder.title}</Typography>
+                  {detailReminder && LEVEL_ICONS[detailReminder.level]}
+                  <Typography variant="h6" fontWeight={700}>{detailReminder?.title}</Typography>
               </DialogTitle>
               <DialogContent>
                   <Box sx={{ mb: 2 }}>
                        <Chip 
-                            label={detailReminder.level} 
+                            label={detailReminder?.level} 
                             size="small" 
                             color={
-                                detailReminder.level === 'Critical' ? 'error' : 
-                                detailReminder.level === 'Important' ? 'warning' : 'info'
+                                detailReminder?.level === 'Critical' ? 'error' : 
+                                detailReminder?.level === 'Important' ? 'warning' : 'info'
                             } 
                         />
-                        {detailReminder.isCompleted && <Chip label="Completed" size="small" color="success" sx={{ ml: 1 }} />}
+                        {detailReminder?.isCompleted && <Chip label="Completed" size="small" color="success" sx={{ ml: 1 }} />}
                   </Box>
-                  <DialogContentText sx={{ color: '#374151', whiteSpace: 'pre-wrap', mb: 3 }}>
-                      {detailReminder.description || 'No description provided.'}
+                  <DialogContentText sx={{ color: 'text.primary', whiteSpace: 'pre-wrap', mb: 3 }}>
+                      {detailReminder?.description || 'No description provided.'}
                   </DialogContentText>
                   
                   <Typography variant="body2" color="text.secondary" fontWeight={600}>
                       Due Date
                   </Typography>
                    <Typography variant="body2" color="text.primary">
-                       {format(new Date(detailReminder.scheduledAt), 'PPPP p')}
+                       {detailReminder && format(new Date(detailReminder.scheduledAt), 'PPPP p')}
                    </Typography>
               </DialogContent>
               <DialogActions sx={{ p: 2 }}>
-                   {!detailReminder.isCompleted && (
+                   {detailReminder && !detailReminder.isCompleted && (
                         <Button 
                             startIcon={<CheckCircleIcon />}
                             color="success"
-                            onClick={() => completeMutation.mutate(detailReminder.id)}
+                            onClick={() => detailReminder && completeMutation.mutate(detailReminder.id)}
                         >
                             Mark Complete
                         </Button>
@@ -301,7 +303,7 @@ export default function RemindersPage() {
                    <Button 
                         startIcon={<DeleteIcon />} 
                         color="error" 
-                        onClick={() => deleteMutation.mutate(detailReminder.id)}
+                        onClick={() => detailReminder && deleteMutation.mutate(detailReminder.id)}
                     >
                        Delete
                    </Button>
