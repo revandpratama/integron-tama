@@ -30,6 +30,11 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import LogoutIcon from '@mui/icons-material/Logout';
 import HistoryIcon from '@mui/icons-material/History';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
+import TerminalIcon from '@mui/icons-material/Terminal';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
+import { Collapse } from '@mui/material';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -53,6 +58,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const router = useRouter();
   const theme = useTheme();
   const { mode, toggleColorMode } = useColorMode();
+  const [apiHitOpen, setApiHitOpen] = useState(false);
 
   const { data: meData, isLoading: meLoading } = useQuery<{ user: { id: string; name: string | null; email: string } | null }>({
     queryKey: ['me'],
@@ -85,8 +91,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { label: 'The Rolodex', path: '/people', icon: <ContactsOutlinedIcon /> },
     { label: 'Knowledge Base', path: '/knowledge', icon: <MenuBookIcon /> },
     { label: 'Reminders', path: '/reminders', icon: <NotificationsActiveIcon /> },
+    { 
+      label: 'API Hit', 
+      icon: <TerminalIcon />,
+      isDropdown: true,
+      open: apiHitOpen,
+      onToggle: () => setApiHitOpen(!apiHitOpen),
+      children: [
+        { label: 'QRIS Pay', path: '/qris', icon: <QrCode2Icon /> },
+        { label: 'BRIVA WS Trigger', path: '/briva', icon: <ElectricBoltIcon /> },
+      ]
+    },
     { label: 'Activity Log', path: '/activity-logs', icon: <HistoryIcon /> },
-    { label: 'QRIS Pay', path: '/qris', icon: <QrCode2Icon /> },
   ];
 
   return (
@@ -136,15 +152,104 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </IconButton>
       </Box>
 
-      {/* Navigation */}
       <List sx={{ px: 2, flex: 1 }}>
         {navItems.map((item) => {
+          if (item.isDropdown) {
+            const isChildActive = item.children?.some(child => pathname === child.path);
+            return (
+              <Box key={item.label}>
+                <ListItemButton
+                  onClick={item.onToggle}
+                  sx={{
+                    borderRadius: 2,
+                    mb: 0.5,
+                    py: 1.5,
+                    px: 2,
+                    justifyContent: collapsed ? 'center' : 'space-between',
+                    color: isChildActive ? 'primary.main' : 'text.secondary',
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                      color: 'text.primary',
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <ListItemIcon
+                      sx={{
+                        minWidth: collapsed ? 0 : 36,
+                        color: 'inherit',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    {!collapsed && (
+                      <ListItemText
+                        primary={item.label}
+                        primaryTypographyProps={{
+                          fontSize: 14,
+                          fontWeight: isChildActive ? 600 : 500,
+                        }}
+                      />
+                    )}
+                  </Box>
+                  {!collapsed && (item.open ? <ExpandLess /> : <ExpandMore />)}
+                </ListItemButton>
+                
+                <Collapse in={item.open && !collapsed} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {item.children?.map((child) => {
+                      const isChildItemActive = pathname === child.path;
+                      return (
+                        <ListItemButton
+                          key={child.path}
+                          component={Link}
+                          href={child.path}
+                          sx={{
+                            borderRadius: 2,
+                            mb: 0.5,
+                            py: 1.2,
+                            pl: 4,
+                            pr: 2,
+                            bgcolor: isChildItemActive ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                            color: isChildItemActive ? 'primary.main' : 'text.secondary',
+                            '&:hover': {
+                              bgcolor: isChildItemActive ? alpha(theme.palette.primary.main, 0.15) : 'action.hover',
+                              color: isChildItemActive ? 'primary.main' : 'text.primary',
+                            },
+                          }}
+                        >
+                          <ListItemIcon
+                            sx={{
+                              minWidth: 32,
+                              color: 'inherit',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {child.icon}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={child.label}
+                            primaryTypographyProps={{
+                              fontSize: 13,
+                              fontWeight: isChildItemActive ? 600 : 500,
+                            }}
+                          />
+                        </ListItemButton>
+                      );
+                    })}
+                  </List>
+                </Collapse>
+              </Box>
+            );
+          }
+
           const isActive = pathname === item.path;
           return (
             <ListItemButton
               key={item.path}
               component={Link}
-              href={item.path}
+              href={item.path!}
               sx={{
                 borderRadius: 2,
                 mb: 0.5,

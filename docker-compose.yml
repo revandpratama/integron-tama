@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=integron_admin
+      - POSTGRES_PASSWORD=integron_secure_pass
+      - POSTGRES_DB=integron_production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - integron_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U integron_admin -d integron_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.production
+    environment:
+      - DATABASE_URL=postgresql://integron_admin:integron_secure_pass@db:5432/integron_production?schema=integron
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - integron_network
+
+networks:
+  integron_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

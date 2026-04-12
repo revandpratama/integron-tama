@@ -6,7 +6,7 @@ import {
     Box, Typography, Paper, Chip, Avatar, Alert,
     Button, TextField, Dialog, DialogTitle, DialogContent,
     DialogActions, Snackbar, Skeleton, Checkbox,
-    Select, MenuItem, FormControl, InputLabel, Divider, Tooltip, ToggleButtonGroup, ToggleButton
+    Select, MenuItem, FormControl, InputLabel, Divider, Tooltip, ToggleButtonGroup, ToggleButton, useTheme
 } from '@mui/material';
 import {
     DndContext, DragOverlay, closestCorners, closestCenter, KeyboardSensor,
@@ -657,6 +657,7 @@ function KanbanContent({ lang, setLang }: { lang: 'en' | 'id', setLang: (l: 'en'
             {detailDialog && (
                 <PartnerDetailDialog
                     partner={detailDialog}
+                    columns={COLUMNS}
                     onClose={() => setDetailDialog(null)}
                     onToggleTask={toggleTask}
                     onUpdate={(data) => updatePartnerMutation.mutate({ id: detailDialog.id, data })}
@@ -731,8 +732,9 @@ function KanbanContent({ lang, setLang }: { lang: 'en' | 'id', setLang: (l: 'en'
 
 // ─── Detail Dialog (extracted for clarity) ───────────────────────────────────
 
-function PartnerDetailDialog({ partner, onClose, onToggleTask, onUpdate, trafficCommentEntry, setTrafficCommentEntry, addTrafficComment }: {
+function PartnerDetailDialog({ partner, columns, onClose, onToggleTask, onUpdate, trafficCommentEntry, setTrafficCommentEntry, addTrafficComment }: {
     partner: Partner;
+    columns: any[];
     onClose: () => void;
     onToggleTask: (partnerId: string, stage: string, task: string, checked: boolean) => void;
     onUpdate: (data: Partial<Partner>) => void;
@@ -747,7 +749,7 @@ function PartnerDetailDialog({ partner, onClose, onToggleTask, onUpdate, traffic
     const stage = partner.boardStage || 'INITIATION';
     const tasks = getTasksForStage(stage, partner.integrationType || 'INBOUND');
     const stageTasks = partner.boardTasks?.[stage] || {};
-    const col = COLUMNS.find(c => c.id === stage);
+    const col = columns.find(c => c.id === stage);
 
     // For PARTNER_REVISION: compute SLA and "good to go" state
     const isRevision = stage === 'PARTNER_REVISION';

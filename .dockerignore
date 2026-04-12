@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.gitignore
+*.md
+Dockerfile
+docker-compose.yml
+.github
+*.js
+dist
+build
+.env
+.env.local
+package-lock.json
