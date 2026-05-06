@@ -19,7 +19,7 @@ import {
   Chip,
   Divider,
   alpha,
-  useTheme
+  useTheme,
 } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -30,24 +30,20 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SendIcon from '@mui/icons-material/Send';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import jsQR from 'jsqr';
 import axios from 'axios';
 
-// ─── Scanner Engine ──────────────────────────────────────────────────────────
-// Strategy: use native BarcodeDetector if available (Chrome/Edge), else jsQR.
-// Detection happens once on mount and is stored in a ref so scan loops
-// never re-check the condition in a hot path.
+// ─── Scanner Engine ───────────────────────────────────────────────────────────
 
 type Engine = 'native' | 'jsqr';
 
 function detectEngine(): Engine {
-  if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
-    return 'native';
-  }
+  if (typeof window !== 'undefined' && 'BarcodeDetector' in window) return 'native';
   return 'jsqr';
 }
 
-/** Extract ImageData from a video element via an offscreen canvas. */
 function getVideoImageData(video: HTMLVideoElement): ImageData | null {
   if (video.readyState < 2 || video.videoWidth === 0) return null;
   const canvas = document.createElement('canvas');
@@ -59,7 +55,6 @@ function getVideoImageData(video: HTMLVideoElement): ImageData | null {
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-/** Extract ImageData from an HTMLImageElement via an offscreen canvas. */
 function getImageElementData(img: HTMLImageElement): ImageData | null {
   const canvas = document.createElement('canvas');
   canvas.width = img.naturalWidth;
@@ -70,7 +65,23 @@ function getImageElementData(img: HTMLImageElement): ImageData | null {
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-// ─── QRIS EMV TLV Parser ────────────────────────────────────────────────────
+// ─── Luhn Check Digit ────────────────────────────────────────────────────────
+
+function luhnCheckDigit(number18: string): string {
+  let total = 0;
+  const reverseDigits = number18.split('').reverse();
+  reverseDigits.forEach((d, i) => {
+    let n = parseInt(d, 10);
+    if (i % 2 === 0) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    total += n;
+  });
+  return String((10 - (total % 10)) % 10);
+}
+
+// ─── QRIS EMV TLV Parser ─────────────────────────────────────────────────────
 
 function parseTLV(data: string): Record<string, string> {
   const result: Record<string, string> = {};
@@ -87,22 +98,18 @@ function parseTLV(data: string): Record<string, string> {
 }
 
 function generateSTAN(): string {
-  return String(Math.floor(Math.random() * 999999)).padStart(6, '0');
+  return String(Math.floor(Math.random() * 899999) + 100000);
 }
 
-function generateApprovalCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+function generateRRN(): string {
+  return String(Math.floor(Math.random() * (10 ** 12 - 10 ** 11)) + 10 ** 11);
 }
 
 function formatTransmissionDateTime(): string {
   const d = new Date();
-  return (
-    String(d.getMonth() + 1).padStart(2, '0') +
-    String(d.getDate()).padStart(2, '0') +
-    String(d.getHours()).padStart(2, '0') +
-    String(d.getMinutes()).padStart(2, '0') +
-    String(d.getSeconds()).padStart(2, '0')
-  );
+  return [d.getMonth() + 1, d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map((v) => String(v).padStart(2, '0'))
+    .join('');
 }
 
 function toDateStr(d: Date): string {
@@ -113,28 +120,48 @@ function toTimeStr(d: Date): string {
   return d.toTimeString().split(' ')[0];
 }
 
+// ─── Matches Python script logic exactly ────────────────────────────────────
+
 function qrisToPayload(raw: string, isDynamic: boolean): PayloadState {
   const root = parseTLV(raw);
-  const m26 = root['26'] ? parseTLV(root['26']) : {};
-  const m51 = root['51'] ? parseTLV(root['51']) : {};
-
   const now = new Date();
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const stan = generateSTAN();
-  const pan = m26['01'] || m51['01'] || '';
-  const acqId = pan ? pan.substring(0, 8) : '93600002';
-  const cardAcceptorId = m26['02'] || pan.substring(0, 15) || '';
-  const additionalData = root['62'] || '';
+  // PAN: parse tag 26 > sub-tag 01, append Luhn check digit (19 digits total)
+  let pan = '';
+  if (root['26']) {
+    const sub = parseTLV(root['26']);
+    if (sub['01']) {
+      const pan18 = sub['01'];
+      pan = pan18 + luhnCheckDigit(pan18);
+    }
+  }
+
+  // additionalDataNational = raw TLV string of tag 61 + tag 62 (with their TL prefix)
+  let ads0 = '';
+  let ads1 = '';
+  if (root['61']) {
+    const len = root['61'].length;
+    ads0 = '61' + String(len).padStart(2, '0') + root['61'];
+  }
+  if (root['62']) {
+    const len = root['62'].length;
+    ads1 = '62' + String(len).padStart(2, '0') + root['62'];
+  }
+
+  // transactionAmount: tag 54 value × 100 (dynamic), or default 15000 × 100 (static)
+  const transactionAmount = isDynamic
+    ? root['54'] ? String(parseInt(root['54'], 10) * 100) : ''
+    : '1500000';
 
   return {
     MTI: '200',
     PAN: pan,
     proccesingCode: '260000',
-    transactionAmount: isDynamic ? (root['54'] || '') : '',
+    transactionAmount,
     transmissionDateTime: formatTransmissionDateTime(),
-    STAN: stan,
+    STAN: generateSTAN(),
     localTransactionTime: toTimeStr(now),
     localTransactionDate: toDateStr(now),
     settlementDate: toDateStr(tomorrow),
@@ -142,25 +169,26 @@ function qrisToPayload(raw: string, isDynamic: boolean): PayloadState {
     merchantType: root['52'] || '',
     posEntryMode: '011',
     convenienceFee: 'C00000000',
-    acqInstitutionId: acqId,
+    acqInstitutionId: '93600002',
     fwdInstitutionId: '360004',
-    RRN: `${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${stan}`,
-    approvalCode: generateApprovalCode(),
+    RRN: generateRRN(),
+    approvalCode: '551467',
     cardAcceptorTerminal: 'BRIMO',
-    cardAcceptorId,
+    cardAcceptorId: 'a44ae3df12c7642230ae6ded5fa5d3a930c24298966d6e5f78c50a24c004f5e3',
     cardAcceptorName: root['59'] || '',
-    additionalData,
+    additionalData: 'PI04Q001CD25SINYO SIMPERS SOBAMC03UMI',
     currencyCode: root['53'] || '360',
-    additionalDataNational: root['64'] || additionalData,
-    issuerID: m51['00'] || acqId,
-    accountIdentification1: m51['01'] || pan,
+    additionalDataNational: ads0 + ads1,
+    issuerID: '93600002',
+    accountIdentification1: '9360000213214291591',
   };
 }
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type QrisType = 'dynamic' | 'static';
 type ScanMethod = 'camera' | 'upload';
+type EndpointStatus = 'checking' | 'up' | 'down' | 'timeout';
 
 interface PayloadState {
   MTI: string;
@@ -218,6 +246,7 @@ const FIELD_LABELS: Record<keyof PayloadState, string> = {
   accountIdentification1: 'Account Identification 1',
 };
 
+// Fields auto-generated or hardcoded — shown as read-only
 const AUTO_FIELDS = new Set([
   'transmissionDateTime',
   'STAN',
@@ -227,9 +256,19 @@ const AUTO_FIELDS = new Set([
   'captureDate',
   'RRN',
   'approvalCode',
+  'acqInstitutionId',
+  'fwdInstitutionId',
+  'cardAcceptorId',
+  'cardAcceptorTerminal',
+  'additionalData',
+  'issuerID',
+  'accountIdentification1',
+  'convenienceFee',
+  'posEntryMode',
+  'proccesingCode',
+  'MTI',
 ]);
 
-// Field grouping for cleaner form layout
 const FIELD_GROUPS: { label: string; fields: (keyof PayloadState)[] }[] = [
   {
     label: 'Transaction',
@@ -253,13 +292,17 @@ const FIELD_GROUPS: { label: string; fields: (keyof PayloadState)[] }[] = [
   },
 ];
 
-// ─── Component ───────────────────────────────────────────────────────────────
+const ENDPOINT_URL = 'http://kyogre-ocp.apps.ocp-new-dev.bri.co.id:80/qris_api/qris_pay_bri';
+const HEALTH_URL = 'http://kyogre-ocp.apps.ocp-new-dev.bri.co.id:80/';
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function QrisPayPage() {
+  const theme = useTheme();
+
   const [qrisType, setQrisType] = useState<QrisType>('dynamic');
   const [scanMethod, setScanMethod] = useState<ScanMethod>('camera');
   const [isScanning, setIsScanning] = useState(false);
-  const theme = useTheme();
   const [scannedRaw, setScannedRaw] = useState<string | null>(null);
   const [payload, setPayload] = useState<PayloadState | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -274,67 +317,76 @@ export default function QrisPayPage() {
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  // Tracks which engine is active so we can show a badge in the UI
   const [activeEngine, setActiveEngine] = useState<Engine | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [pasteFlash, setPasteFlash] = useState(false);
+
+  // Endpoint health indicator
+  const [endpointStatus, setEndpointStatus] = useState<EndpointStatus>('checking');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  // Native BarcodeDetector instance (only set when engine === 'native')
   const nativeDetectorRef = useRef<any>(null);
-  const engineRef = useRef<Engine>('jsqr'); // safe default until mount
+  const engineRef = useRef<Engine>('jsqr');
 
-  // ── Detect engine once on mount ──────────────────────────────────────────
+  // ── Engine detection ─────────────────────────────────────────────────────
   useEffect(() => {
     const engine = detectEngine();
     engineRef.current = engine;
     setActiveEngine(engine);
     if (engine === 'native') {
-      nativeDetectorRef.current = new (window as any).BarcodeDetector({
-        formats: ['qr_code'],
-      });
+      nativeDetectorRef.current = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
     }
   }, []);
 
-  // ── Shared: decode a single source using whichever engine is available ──
-  const decodeWithNative = useCallback(
-    async (source: HTMLVideoElement | HTMLImageElement): Promise<string | null> => {
-      try {
-        const results = await nativeDetectorRef.current.detect(source);
-        return results.length > 0 ? results[0].rawValue : null;
-      } catch {
-        return null;
-      }
-    },
-    []
-  );
+  // ── Endpoint health check ────────────────────────────────────────────────
+  const checkEndpoint = useCallback(async () => {
+    setEndpointStatus('checking');
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      await fetch(HEALTH_URL, { method: 'GET', signal: ctrl.signal, mode: 'no-cors' });
+      clearTimeout(timer);
+      setEndpointStatus('up');
+    } catch (e: any) {
+      setEndpointStatus(e.name === 'AbortError' ? 'timeout' : 'down');
+    }
+  }, []);
 
-  const decodeWithJsQR = useCallback(
-    (source: HTMLVideoElement | HTMLImageElement): string | null => {
-      const imageData =
-        source instanceof HTMLVideoElement
-          ? getVideoImageData(source)
-          : getImageElementData(source);
-      if (!imageData) return null;
-      const result = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert',
-      });
-      return result ? result.data : null;
-    },
-    []
-  );
+  useEffect(() => {
+    checkEndpoint();
+    const interval = setInterval(checkEndpoint, 30000);
+    return () => clearInterval(interval);
+  }, [checkEndpoint]);
+
+  // ── Decode helpers ───────────────────────────────────────────────────────
+  const decodeWithNative = useCallback(async (source: HTMLVideoElement | HTMLImageElement): Promise<string | null> => {
+    try {
+      const results = await nativeDetectorRef.current.detect(source);
+      return results.length > 0 ? results[0].rawValue : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const decodeWithJsQR = useCallback((source: HTMLVideoElement | HTMLImageElement): string | null => {
+    const imageData =
+      source instanceof HTMLVideoElement ? getVideoImageData(source) : getImageElementData(source);
+    if (!imageData) return null;
+    const result = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+    return result ? result.data : null;
+  }, []);
 
   const decode = useCallback(
     async (source: HTMLVideoElement | HTMLImageElement): Promise<string | null> => {
-      if (engineRef.current === 'native') {
-        return decodeWithNative(source);
-      }
+      if (engineRef.current === 'native') return decodeWithNative(source);
       return decodeWithJsQR(source);
     },
     [decodeWithNative, decodeWithJsQR]
   );
 
-  // ── Camera control ───────────────────────────────────────────────────────
+  // ── Camera ───────────────────────────────────────────────────────────────
   const stopCamera = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     animFrameRef.current = null;
@@ -360,7 +412,6 @@ export default function QrisPayPage() {
     setScannedRaw(null);
     setPayload(null);
     setResponse(null);
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 } },
@@ -373,53 +424,88 @@ export default function QrisPayPage() {
 
       const scanLoop = async () => {
         if (!videoRef.current) return;
-        // jsQR: throttle to ~15 fps to avoid blocking the main thread
-        if (engineRef.current === 'jsqr') {
-          await new Promise((r) => setTimeout(r, 66));
-        }
+        if (engineRef.current === 'jsqr') await new Promise((r) => setTimeout(r, 66));
         const result = await decode(videoRef.current);
-        if (result) {
-          handleScanned(result);
-          return;
-        }
+        if (result) { handleScanned(result); return; }
         animFrameRef.current = requestAnimationFrame(scanLoop);
       };
-
       scanLoop();
     } catch {
       setScanError('Could not access camera. Please allow camera permissions and try again.');
     }
   }, [decode, handleScanned]);
 
-  // ── Image upload ─────────────────────────────────────────────────────────
-  const handleImageUpload = useCallback(
+  // ── Image decode (shared for upload, drag, paste) ────────────────────────
+  const decodeImageFile = useCallback(
     async (file: File) => {
       setScannedRaw(null);
       setPayload(null);
       setResponse(null);
       setScanError(null);
-
       const url = URL.createObjectURL(file);
       setUploadedImageUrl(url);
-
       const img = new Image();
-      // Required for cross-origin canvas operations (no-op for blob URLs but safe)
       img.crossOrigin = 'anonymous';
       img.src = url;
       img.onload = async () => {
         const result = await decode(img);
-        if (result) {
-          handleScanned(result);
-        } else {
-          setScanError('No QR code found in the image. Please try a clearer image.');
-        }
+        if (result) handleScanned(result);
+        else setScanError('No QR code found in the image. Please try a clearer image.');
       };
-      img.onerror = () => {
-        setScanError('Failed to load the image file.');
-      };
+      img.onerror = () => setScanError('Failed to load the image file.');
     },
     [decode, handleScanned]
   );
+
+  const handleImageUpload = useCallback(
+    (file: File) => {
+      if (file.type.startsWith('image/')) decodeImageFile(file);
+    },
+    [decodeImageFile]
+  );
+
+  // ── Drag & Drop ──────────────────────────────────────────────────────────
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const file = [...e.dataTransfer.items].find(
+        (i) => i.kind === 'file' && i.type.startsWith('image/')
+      )?.getAsFile();
+      if (file) handleImageUpload(file);
+      else setScanError('Please drop an image file.');
+    },
+    [handleImageUpload]
+  );
+
+  // ── Clipboard Paste (Ctrl+V / Cmd+V) ────────────────────────────────────
+  useEffect(() => {
+    if (scanMethod !== 'upload' || payload) return;
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = [...(e.clipboardData?.items ?? [])];
+      const imgItem = items.find((i) => i.type.startsWith('image/'));
+      if (!imgItem) return;
+      const file = imgItem.getAsFile();
+      if (!file) return;
+      // Flash the drop zone green
+      setPasteFlash(true);
+      setTimeout(() => setPasteFlash(false), 400);
+      handleImageUpload(file);
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [scanMethod, payload, handleImageUpload]);
 
   // ── Reset ────────────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
@@ -442,7 +528,7 @@ export default function QrisPayPage() {
     setUploadedImageUrl(null);
   };
 
-  // ── API submit ───────────────────────────────────────────────────────────
+  // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!payload) return;
     setIsSubmitting(true);
@@ -459,12 +545,7 @@ export default function QrisPayPage() {
         httpStatus: d.httpStatus ?? null,
       });
     } catch (err: any) {
-      // Axios-level error (shouldn't normally happen since route always returns 200)
-      setResponse({
-        ok: false,
-        errorType: 'unknown',
-        errorMessage: err.message,
-      });
+      setResponse({ ok: false, errorType: 'unknown', errorMessage: err.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -482,258 +563,134 @@ export default function QrisPayPage() {
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
+  // ── Endpoint status indicator helpers ────────────────────────────────────
+  const endpointDotColor =
+    endpointStatus === 'up' ? theme.palette.success.main
+    : endpointStatus === 'checking' ? theme.palette.text.disabled
+    : theme.palette.error.main;
+
+  const endpointLabel =
+    endpointStatus === 'checking' ? 'Checking endpoint…'
+    : endpointStatus === 'up' ? 'Endpoint reachable'
+    : endpointStatus === 'timeout' ? 'Endpoint timed out'
+    : 'Endpoint unreachable';
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <Box sx={{ p: 4, maxWidth: 1100, mx: 'auto', bgcolor: 'background.default', minHeight: '100vh' }}>
+
       {/* ── Header ── */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 44,
-              height: 44,
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+          <Box sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <QrCode2Icon sx={{ color: 'primary.main', fontSize: 26 }} />
           </Box>
           <Box>
-            <Typography variant="h5" fontWeight={700}>
-              QRIS Pay
-            </Typography>
+            <Typography variant="h5" fontWeight={700}>QRIS Pay</Typography>
             <Typography variant="body2" color="text.secondary">
               Scan or upload a QRIS code to process a payment via BRI QRIS API.
             </Typography>
           </Box>
         </Box>
-        {/* Engine badge */}
-        {activeEngine && (
-          <Tooltip
-            title={
-              activeEngine === 'native'
-                ? 'Using the native BarcodeDetector API (Chrome/Edge). Fast, hardware-accelerated.'
-                : 'BarcodeDetector not available — using jsQR (pure JS fallback). Works in all browsers.'
-            }
-            placement="left"
-          >
-            <Chip
-              size="small"
-              label={activeEngine === 'native' ? '⚡ BarcodeDetector API' : '🔄 jsQR Fallback'}
-              sx={{
-                fontWeight: 700,
-                fontSize: 11,
-                bgcolor: activeEngine === 'native' ? '#f0fdf4' : '#fffbeb',
-                color: activeEngine === 'native' ? '#15803d' : '#92400e',
-                border: '1px solid',
-                borderColor: activeEngine === 'native' ? '#bbf7d0' : '#fde68a',
-                cursor: 'help',
-              }}
-            />
+
+        {/* Endpoint health indicator */}
+        <Stack direction="row" alignItems="center" spacing={1}
+          sx={{ px: 1.5, py: 0.75, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+          <FiberManualRecordIcon
+            sx={{
+              fontSize: 10,
+              color: endpointDotColor,
+              animation: endpointStatus === 'checking' ? 'qrisBlink 1s ease-in-out infinite' : 'none',
+              '@keyframes qrisBlink': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.2 } },
+            }}
+          />
+          <Typography variant="caption" fontWeight={500} color="text.secondary">{endpointLabel}</Typography>
+          {activeEngine && (
+            <Tooltip title={activeEngine === 'native' ? 'Native BarcodeDetector API (Chrome/Edge)' : 'jsQR fallback (all browsers)'}>
+              <Chip
+                size="small"
+                label={activeEngine === 'native' ? '⚡ Native' : '🔄 jsQR'}
+                sx={{ fontSize: 10, fontWeight: 700, height: 20, cursor: 'help' }}
+              />
+            </Tooltip>
+          )}
+          <Tooltip title="Re-check endpoint">
+            <IconButton size="small" onClick={checkEndpoint} disabled={endpointStatus === 'checking'}>
+              <RefreshIcon fontSize="small" />
+            </IconButton>
           </Tooltip>
-        )}
+        </Stack>
       </Box>
 
       {/* ── QRIS Type Tabs ── */}
       <Paper elevation={0} sx={{ mb: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden', bgcolor: 'background.paper' }}>
-        <Tabs
-          value={qrisType}
-          onChange={handleQrisTypeChange}
-          sx={{ borderBottom: '1px solid', borderColor: 'divider', px: 1 }}
-          TabIndicatorProps={{ style: { backgroundColor: theme.palette.primary.main, height: 3 } }}
-        >
-          <Tab
-            value="dynamic"
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
-                <Chip
-                  label="Dynamic"
-                  size="small"
-                  sx={{
-                    bgcolor: qrisType === 'dynamic' ? 'primary.main' : 'action.hover',
-                    color: qrisType === 'dynamic' ? 'primary.contrastText' : 'text.secondary',
-                    fontWeight: 700,
-                    fontSize: 10,
-                    height: 20,
-                  }}
-                />
-                <span style={{ fontSize: 14, fontWeight: 600 }}>Dynamic QRIS</span>
-              </Box>
-            }
-            sx={{ textTransform: 'none', minHeight: 52 }}
-          />
-          <Tab
-            value="static"
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
-                <Chip
-                  label="Static"
-                  size="small"
-                  sx={{
-                    bgcolor: qrisType === 'static' ? 'secondary.main' : 'action.hover',
-                    color: qrisType === 'static' ? 'secondary.contrastText' : 'text.secondary',
-                    fontWeight: 700,
-                    fontSize: 10,
-                    height: 20,
-                  }}
-                />
-                <span style={{ fontSize: 14, fontWeight: 600 }}>Static QRIS</span>
-              </Box>
-            }
-            sx={{ textTransform: 'none', minHeight: 52 }}
-          />
+        <Tabs value={qrisType} onChange={handleQrisTypeChange} sx={{ borderBottom: '1px solid', borderColor: 'divider', px: 1 }}
+          TabIndicatorProps={{ style: { backgroundColor: theme.palette.primary.main, height: 3 } }}>
+          <Tab value="dynamic" label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
+            <Chip label="Dynamic" size="small" sx={{ bgcolor: qrisType === 'dynamic' ? 'primary.main' : 'action.hover', color: qrisType === 'dynamic' ? 'primary.contrastText' : 'text.secondary', fontWeight: 700, fontSize: 10, height: 20 }} />
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Dynamic QRIS</span>
+          </Box>} sx={{ textTransform: 'none', minHeight: 52 }} />
+          <Tab value="static" label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
+            <Chip label="Static" size="small" sx={{ bgcolor: qrisType === 'static' ? 'secondary.main' : 'action.hover', color: qrisType === 'static' ? 'secondary.contrastText' : 'text.secondary', fontWeight: 700, fontSize: 10, height: 20 }} />
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Static QRIS</span>
+          </Box>} sx={{ textTransform: 'none', minHeight: 52 }} />
         </Tabs>
-
         <Box sx={{ px: 3, py: 2 }}>
-          <Alert
-            severity={qrisType === 'dynamic' ? 'info' : 'warning'}
-            sx={{ borderRadius: 2, fontSize: 13 }}
-          >
+          <Alert severity={qrisType === 'dynamic' ? 'info' : 'warning'} sx={{ borderRadius: 2, fontSize: 13 }}>
             {qrisType === 'dynamic' ? (
-              <>
-                <strong>Dynamic QRIS</strong> — The transaction amount is embedded in the QR code
-                and will be extracted automatically (tag <code>54</code>).
-              </>
+              <><strong>Dynamic QRIS</strong> — The transaction amount is embedded in the QR code (tag <code>54</code>) and extracted automatically.</>
             ) : (
-              <>
-                <strong>Static QRIS</strong> — The QR code does not contain an amount. You must
-                enter the <strong>Transaction Amount</strong> manually before submitting.
-              </>
+              <><strong>Static QRIS</strong> — No amount in QR. Defaults to <strong>Rp 15.000</strong> — edit the field before submitting if needed.</>
             )}
           </Alert>
         </Box>
       </Paper>
 
-      {/* ── Scanner Section ── */}
+      {/* ── Scanner ── */}
       {!payload && (
-        <Paper
-          elevation={0}
-          sx={{ mb: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden', bgcolor: 'background.paper' }}
-        >
-          <Tabs
-            value={scanMethod}
-            onChange={handleScanMethodChange}
+        <Paper elevation={0} sx={{ mb: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden', bgcolor: 'background.paper' }}>
+          <Tabs value={scanMethod} onChange={handleScanMethodChange}
             sx={{ bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider' }}
-            TabIndicatorProps={{ style: { backgroundColor: theme.palette.text.primary, height: 3 } }}
-          >
-            <Tab
-              icon={<VideocamIcon fontSize="small" />}
-              iconPosition="start"
-              label="Camera Scan"
-              value="camera"
-              sx={{ textTransform: 'none', fontWeight: 600, minHeight: 52, fontSize: 13 }}
-            />
-            <Tab
-              icon={<UploadFileIcon fontSize="small" />}
-              iconPosition="start"
-              label="Upload Image"
-              value="upload"
-              sx={{ textTransform: 'none', fontWeight: 600, minHeight: 52, fontSize: 13 }}
-            />
+            TabIndicatorProps={{ style: { backgroundColor: theme.palette.text.primary, height: 3 } }}>
+            <Tab icon={<VideocamIcon fontSize="small" />} iconPosition="start" label="Camera Scan" value="camera"
+              sx={{ textTransform: 'none', fontWeight: 600, minHeight: 52, fontSize: 13 }} />
+            <Tab icon={<UploadFileIcon fontSize="small" />} iconPosition="start" label="Upload Image" value="upload"
+              sx={{ textTransform: 'none', fontWeight: 600, minHeight: 52, fontSize: 13 }} />
           </Tabs>
 
           {/* Camera mode */}
           {scanMethod === 'camera' && (
             <Box sx={{ p: 3 }}>
-              <Box
-                sx={{
-                  position: 'relative',
-                  width: '100%',
-                  maxWidth: 440,
-                  mx: 'auto',
-                  borderRadius: 3,
-                  overflow: 'hidden',
-                  bgcolor: '#000',
-                  aspectRatio: '4/3',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <video
-                  ref={videoRef}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: isScanning ? 'block' : 'none',
-                  }}
-                  playsInline
-                  muted
-                />
+              <Box sx={{ position: 'relative', width: '100%', maxWidth: 440, mx: 'auto', borderRadius: 3, overflow: 'hidden', bgcolor: '#000', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: isScanning ? 'block' : 'none' }} playsInline muted />
                 {!isScanning && (
                   <Box sx={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
                     <VideocamIcon sx={{ fontSize: 56, mb: 1 }} />
                     <Typography variant="body2">Camera preview</Typography>
                   </Box>
                 )}
-                {/* Scan frame overlay */}
                 {isScanning && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: 180,
-                      height: 180,
-                      borderRadius: 2,
-                      boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        inset: -2,
-                        border: '3px solid',
-                        borderColor: 'primary.main',
-                        borderRadius: 'inherit',
-                        animation: 'qrisPulse 1.5s ease-in-out infinite',
-                      },
-                      '@keyframes qrisPulse': {
-                        '0%, 100%': { opacity: 1 },
-                        '50%': { opacity: 0.4 },
-                      },
-                    }}
-                  />
+                  <Box sx={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    width: 180, height: 180, borderRadius: 2, boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
+                    '&::before': { content: '""', position: 'absolute', inset: -2, border: '3px solid', borderColor: 'primary.main', borderRadius: 'inherit', animation: 'qrisPulse 1.5s ease-in-out infinite' },
+                    '@keyframes qrisPulse': { '0%, 100%': { opacity: 1 }, '50%': { opacity: 0.4 } },
+                  }} />
                 )}
               </Box>
-
               <Box sx={{ mt: 3, textAlign: 'center' }}>
                 {!isScanning ? (
-                  <Button
-                    variant="contained"
-                    onClick={startCamera}
-                    startIcon={<VideocamIcon />}
-                    sx={{
-                      bgcolor: 'primary.main',
-                      px: 4,
-                      py: 1.5,
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontWeight: 700,
-                      fontSize: 14,
-                      '&:hover': { bgcolor: 'primary.dark' },
-                    }}
-                  >
+                  <Button variant="contained" onClick={startCamera} startIcon={<VideocamIcon />}
+                    sx={{ px: 4, py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 700, fontSize: 14 }}>
                     Start Camera
                   </Button>
                 ) : (
                   <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
                     <CircularProgress size={20} thickness={5} sx={{ color: 'primary.main' }} />
-                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                      Scanning for QRIS code…
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      size="small"
-                      onClick={stopCamera}
-                      startIcon={<StopIcon />}
-                      sx={{ textTransform: 'none', borderRadius: 2 }}
-                    >
-                      Stop
-                    </Button>
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>Scanning for QRIS code…</Typography>
+                    <Button variant="outlined" color="error" size="small" onClick={stopCamera} startIcon={<StopIcon />}
+                      sx={{ textTransform: 'none', borderRadius: 2 }}>Stop</Button>
                   </Stack>
                 )}
               </Box>
@@ -746,51 +703,48 @@ export default function QrisPayPage() {
               <Box
                 component="label"
                 htmlFor="qris-image-upload"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
                 sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  p: 5,
-                  border: '2px dashed',
-                  borderColor: 'divider',
-                  borderRadius: 3,
-                  cursor: 'pointer',
-                  bgcolor: 'background.default',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  p: 5, border: '2px dashed', borderRadius: 3, cursor: 'pointer', minHeight: 220,
                   transition: 'all 0.2s',
+                  borderColor: pasteFlash
+                    ? 'success.main'
+                    : isDragOver ? 'primary.main' : 'divider',
+                  bgcolor: pasteFlash
+                    ? alpha(theme.palette.success.main, 0.08)
+                    : isDragOver ? 'action.hover' : 'background.default',
                   '&:hover': { bgcolor: 'action.hover', borderColor: 'primary.main' },
-                  minHeight: 220,
                 }}
               >
                 {uploadedImageUrl ? (
-                  <img
-                    src={uploadedImageUrl}
-                    alt="Uploaded QRIS"
-                    style={{ maxHeight: 220, maxWidth: '100%', borderRadius: 8, objectFit: 'contain' }}
-                  />
+                  <img src={uploadedImageUrl} alt="Uploaded QRIS"
+                    style={{ maxHeight: 220, maxWidth: '100%', borderRadius: 8, objectFit: 'contain' }} />
                 ) : (
-                  <>
-                    <UploadFileIcon sx={{ fontSize: 52, color: '#9ca3af', mb: 2 }} />
+                  <Stack alignItems="center" spacing={1}>
+                    <UploadFileIcon sx={{ fontSize: 52, color: '#9ca3af' }} />
                     <Typography fontWeight={700} color="text.secondary">
-                      Click to upload QRIS image
+                      Click to upload &nbsp;·&nbsp; drag &amp; drop
                     </Typography>
-                    <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5 }}>
-                      PNG, JPG, WEBP supported
-                    </Typography>
-                  </>
+                    {/* Paste hint */}
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <ContentPasteIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                      <Typography variant="caption" color="text.disabled">
+                        or press&nbsp;
+                        <Box component="kbd" sx={{ px: 0.5, py: 0.1, border: '1px solid', borderColor: 'divider', borderRadius: 0.5, fontFamily: 'monospace', fontSize: 11 }}>Ctrl</Box>
+                        &nbsp;+&nbsp;
+                        <Box component="kbd" sx={{ px: 0.5, py: 0.1, border: '1px solid', borderColor: 'divider', borderRadius: 0.5, fontFamily: 'monospace', fontSize: 11 }}>V</Box>
+                        &nbsp;to paste from clipboard
+                      </Typography>
+                    </Stack>
+                    <Typography variant="caption" color="text.disabled">PNG · JPG · WEBP</Typography>
+                  </Stack>
                 )}
               </Box>
-              <input
-                id="qris-image-upload"
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleImageUpload(file);
-                  e.target.value = '';
-                }}
-              />
+              <input id="qris-image-upload" type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }} />
             </Box>
           )}
         </Paper>
@@ -798,104 +752,49 @@ export default function QrisPayPage() {
 
       {/* Scan error */}
       {scanError && (
-        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} icon={<ErrorOutlineIcon />}>
-          {scanError}
-        </Alert>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} icon={<ErrorOutlineIcon />}>{scanError}</Alert>
       )}
 
       {/* ── Payload Form ── */}
       {payload && (
         <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-          {/* Scan success header */}
-          <Box
-            sx={{
-              p: 2.5,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              bgcolor: alpha(theme.palette.success.main, 0.1),
-              borderBottom: '1px solid',
-              borderColor: alpha(theme.palette.success.main, 0.2),
-            }}
-          >
+          {/* Success header */}
+          <Box sx={{ p: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.success.main, 0.1), borderBottom: '1px solid', borderColor: alpha(theme.palette.success.main, 0.2) }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <CheckCircleIcon sx={{ color: 'success.main', fontSize: 24 }} />
               <Box>
-                <Typography fontWeight={700} sx={{ color: 'success.main', fontSize: 14 }}>
-                  QR Code Scanned Successfully
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'text.secondary',
-                    fontFamily: 'monospace',
-                    display: 'block',
-                    mt: 0.2,
-                    maxWidth: 540,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
+                <Typography fontWeight={700} sx={{ color: 'success.main', fontSize: 14 }}>QR Code Scanned Successfully</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace', display: 'block', mt: 0.2, maxWidth: 540, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {scannedRaw}
                 </Typography>
               </Box>
             </Box>
-            <Button
-              variant="outlined"
-              color="inherit"
-              size="small"
-              startIcon={<RefreshIcon />}
-              onClick={handleReset}
-              sx={{ textTransform: 'none', borderRadius: 2, flexShrink: 0 }}
-            >
-              Scan Again
-            </Button>
+            <Button variant="outlined" color="inherit" size="small" startIcon={<RefreshIcon />} onClick={handleReset}
+              sx={{ textTransform: 'none', borderRadius: 2, flexShrink: 0 }}>Scan Again</Button>
           </Box>
 
-          {/* In-flight loading bar */}
           {isSubmitting && (
-            <LinearProgress
-              sx={{
-                height: 3,
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                '& .MuiLinearProgress-bar': { bgcolor: 'primary.main' },
-              }}
-            />
+            <LinearProgress sx={{ height: 3, bgcolor: alpha(theme.palette.primary.main, 0.1), '& .MuiLinearProgress-bar': { bgcolor: 'primary.main' } }} />
           )}
 
           <Box sx={{ p: 3, opacity: isSubmitting ? 0.6 : 1, transition: 'opacity 0.2s', pointerEvents: isSubmitting ? 'none' : 'auto' }}>
             {qrisType === 'static' && (
               <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
-                Enter the <strong>Transaction Amount</strong> before submitting (in IDR, e.g.{' '}
-                <code>50000</code>).
+                Amount defaulted to <strong>Rp 15.000</strong> — edit the <strong>Transaction Amount</strong> field below if needed.
               </Alert>
             )}
 
-            {/* Grouped fields */}
             <Stack spacing={3}>
               {FIELD_GROUPS.map((group) => (
                 <Box key={group.label}>
-                  <Typography
-                    variant="caption"
-                    fontWeight={700}
-                    sx={{
-                      textTransform: 'uppercase',
-                      letterSpacing: 1,
-                      color: 'text.secondary',
-                      mb: 1.5,
-                      display: 'block',
-                    }}
-                  >
+                  <Typography variant="caption" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 1, color: 'text.secondary', mb: 1.5, display: 'block' }}>
                     {group.label}
                   </Typography>
                   <Grid container spacing={2}>
                     {group.fields.map((key) => {
-                      const isAutoGen = AUTO_FIELDS.has(key);
-                      const isAmountField = key === 'transactionAmount';
-                      const isAmountRequired = isAmountField && qrisType === 'static';
-                      const isAmountError = isAmountRequired && payload && !payload[key];
-
+                      const isAuto = AUTO_FIELDS.has(key);
+                      const isAmount = key === 'transactionAmount';
+                      const isAmountStatic = isAmount && qrisType === 'static';
                       return (
                         <Grid
                           size={{
@@ -907,20 +806,21 @@ export default function QrisPayPage() {
                         >
                           <TextField
                             label={FIELD_LABELS[key]}
-                            value={payload ? payload[key] : ''}
-                            onChange={(e) => payload && setPayload({ ...payload, [key]: e.target.value })}
-                            fullWidth
-                            size="small"
-                            required={isAmountRequired}
-                            error={isAmountError}
-                            helperText={isAmountError ? 'Required for Static QRIS' : undefined}
+                            value={payload[key]}
+                            onChange={(e) => setPayload({ ...payload, [key]: e.target.value })}
+                            fullWidth size="small"
                             slotProps={{
                               inputLabel: { shrink: true },
                               input: {
+                                readOnly: isAuto,
                                 sx: {
-                                  fontFamily: isAutoGen ? 'monospace' : 'inherit',
+                                  fontFamily: isAuto ? 'monospace' : 'inherit',
                                   fontSize: 13,
-                                  bgcolor: isAutoGen ? 'action.hover' : isAmountRequired ? (theme.palette.mode === 'light' ? '#fffbeb' : alpha(theme.palette.warning.main, 0.1)) : 'background.paper',
+                                  bgcolor: isAuto
+                                    ? 'action.hover'
+                                    : isAmountStatic
+                                    ? alpha(theme.palette.warning.main, 0.07)
+                                    : 'background.paper',
                                 },
                               },
                             }}
@@ -933,37 +833,13 @@ export default function QrisPayPage() {
               ))}
             </Stack>
 
-            {/* Submit row */}
             <Divider sx={{ my: 3 }} />
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-              <Button
-                variant="outlined"
-                color="inherit"
-                onClick={handleReset}
-                sx={{ textTransform: 'none', borderRadius: 2, px: 3 }}
-              >
-                Reset
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleSubmit}
-                disabled={
-                  isSubmitting || !payload || (qrisType === 'static' && !payload.transactionAmount.trim())
-                }
-                startIcon={
-                  isSubmitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon />
-                }
-                sx={{
-                  bgcolor: 'text.primary',
-                  color: 'background.paper',
-                  px: 4,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 700,
-                  '&:hover': { bgcolor: 'text.secondary' },
-                  '&:disabled': { bgcolor: 'action.disabledBackground', color: 'text.disabled' },
-                }}
-              >
+              <Button variant="outlined" color="inherit" onClick={handleReset} sx={{ textTransform: 'none', borderRadius: 2, px: 3 }}>Reset</Button>
+              <Button variant="contained" onClick={handleSubmit}
+                disabled={isSubmitting || !payload || (qrisType === 'static' && !payload.transactionAmount.trim())}
+                startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+                sx={{ bgcolor: 'text.primary', color: 'background.paper', px: 4, borderRadius: 2, textTransform: 'none', fontWeight: 700, '&:hover': { bgcolor: 'text.secondary' }, '&:disabled': { bgcolor: 'action.disabledBackground', color: 'text.disabled' } }}>
                 {isSubmitting ? 'Submitting…' : 'Submit Payment'}
               </Button>
             </Box>
@@ -975,151 +851,52 @@ export default function QrisPayPage() {
       {response && (
         <Box sx={{ mt: 3 }}>
           {response.ok ? (
-            /* ── Success ── */
-            <Paper
-              elevation={0}
-              sx={{ borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.3), overflow: 'hidden', bgcolor: 'background.paper' }}
-            >
-              <Box
-                sx={{
-                  p: 2.5,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  bgcolor: alpha(theme.palette.success.main, 0.1),
-                  borderBottom: '1px solid',
-                  borderColor: alpha(theme.palette.success.main, 0.2),
-                }}
-              >
+            <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.3), overflow: 'hidden', bgcolor: 'background.paper' }}>
+              <Box sx={{ p: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.success.main, 0.1), borderBottom: '1px solid', borderColor: alpha(theme.palette.success.main, 0.2) }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CheckCircleIcon sx={{ color: 'success.main' }} />
                   <Box>
-                    <Typography fontWeight={700} sx={{ color: 'success.main' }}>
-                      Payment Request Sent
-                    </Typography>
-                    {response.httpStatus && (
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        HTTP {response.httpStatus}
-                      </Typography>
-                    )}
+                    <Typography fontWeight={700} sx={{ color: 'success.main' }}>Payment Request Sent</Typography>
+                    {response.httpStatus && <Typography variant="caption" sx={{ color: 'text.secondary' }}>HTTP {response.httpStatus}</Typography>}
                   </Box>
                 </Box>
                 <Tooltip title={copied ? 'Copied!' : 'Copy response'}>
-                  <IconButton size="small" onClick={handleCopyResponse}>
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
+                  <IconButton size="small" onClick={handleCopyResponse}><ContentCopyIcon fontSize="small" /></IconButton>
                 </Tooltip>
               </Box>
               <Box sx={{ p: 3, bgcolor: 'action.hover' }}>
-                <pre
-                  style={{
-                    margin: 0,
-                    fontFamily: "'Fira Code', 'Consolas', monospace",
-                    fontSize: 12.5,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-all',
-                    color: 'text.primary',
-                    lineHeight: 1.7,
-                  }}
-                >
+                <pre style={{ margin: 0, fontFamily: "'Fira Code', 'Consolas', monospace", fontSize: 12.5, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.7 }}>
                   {JSON.stringify(response.data, null, 2)}
                 </pre>
               </Box>
             </Paper>
           ) : (
-            /* ── Error ── */
-            <Paper
-              elevation={0}
-              sx={{ borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.error.main, 0.3), overflow: 'hidden', bgcolor: 'background.paper' }}
-            >
-              {/* Error header */}
-              <Box
-                sx={{
-                  p: 2.5,
-                  bgcolor: alpha(theme.palette.error.main, 0.1),
-                  borderBottom: '1px solid',
-                  borderColor: alpha(theme.palette.error.main, 0.2),
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 1.5,
-                }}
-              >
+            <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.error.main, 0.3), overflow: 'hidden', bgcolor: 'background.paper' }}>
+              <Box sx={{ p: 2.5, bgcolor: alpha(theme.palette.error.main, 0.1), borderBottom: '1px solid', borderColor: alpha(theme.palette.error.main, 0.2), display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                 <ErrorOutlineIcon sx={{ color: 'error.main', mt: 0.2, flexShrink: 0 }} />
                 <Box sx={{ flex: 1 }}>
                   <Typography fontWeight={700} sx={{ color: 'error.main', mb: 0.5 }}>
-                    {response.errorType === 'timeout'
-                      ? 'Connection Timed Out'
-                      : response.errorType === 'unreachable'
-                      ? 'Server Unreachable'
-                      : 'Request Failed'}
+                    {response.errorType === 'timeout' ? 'Connection Timed Out' : response.errorType === 'unreachable' ? 'Server Unreachable' : 'Request Failed'}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.6 }}>
-                    {response.errorType === 'timeout' && (
-                      <>The QRIS API did not respond within <strong>10 seconds</strong>. This usually means the server is down or unreachable from your current network.</>
-                    )}
-                    {response.errorType === 'unreachable' && (
-                      <>Could not establish a connection to the BRI QRIS API. This endpoint is <strong>only accessible from the office intranet</strong>. If you are on a personal or external network, this request will always fail.</>
-                    )}
-                    {(response.errorType === 'unknown' || !response.errorType) && (
-                      <>An unexpected error occurred while communicating with the API.</>
-                    )}
+                    {response.errorType === 'timeout' && <>The QRIS API did not respond within <strong>10 seconds</strong>.</>}
+                    {response.errorType === 'unreachable' && <>Could not connect to the BRI QRIS API. This endpoint is <strong>only accessible from the office intranet</strong>.</>}
+                    {(response.errorType === 'unknown' || !response.errorType) && <>An unexpected error occurred while communicating with the API.</>}
                   </Typography>
                 </Box>
               </Box>
-
-              {/* Intranet hint */}
               {(response.errorType === 'unreachable' || response.errorType === 'timeout') && (
-                <Alert
-                  severity="warning"
-                  sx={{
-                    borderRadius: 0,
-                    borderBottom: '1px solid #fecaca',
-                    '& .MuiAlert-icon': { alignSelf: 'flex-start', mt: 0.5 },
-                  }}
-                >
-                  <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-                    Not on the office network?
-                  </Typography>
+                <Alert severity="warning" sx={{ borderRadius: 0, borderBottom: '1px solid #fecaca', '& .MuiAlert-icon': { alignSelf: 'flex-start', mt: 0.5 } }}>
+                  <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Not on the office network?</Typography>
                   <Typography variant="body2">
-                    The endpoint{' '}
-                    <code style={{ fontSize: 11, background: '#fef3c7', padding: '1px 4px', borderRadius: 3 }}>
-                      kyogre-ocp.apps.ocp-new-dev.bri.co.id
-                    </code>{' '}
-                    is an internal BRI intranet address. Connect to the office VPN or use an office Wi-Fi
-                    network to reach it.
+                    The endpoint <code style={{ fontSize: 11, background: '#fef3c7', padding: '1px 4px', borderRadius: 3 }}>kyogre-ocp.apps.ocp-new-dev.bri.co.id</code> is an internal BRI intranet address. Connect to the office VPN or use office Wi-Fi to reach it.
                   </Typography>
                 </Alert>
               )}
-
-              {/* Technical detail */}
               <Box sx={{ p: 2.5, bgcolor: 'action.hover' }}>
-                <Typography
-                  variant="caption"
-                  sx={{ color: 'text.disabled', display: 'block', mb: 1, letterSpacing: 0.5 }}
-                >
-                  TECHNICAL DETAIL
-                </Typography>
-                <pre
-                  style={{
-                    margin: 0,
-                    fontFamily: "'Fira Code', 'Consolas', monospace",
-                    fontSize: 12,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-all',
-                    color: theme.palette.error.main,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {JSON.stringify(
-                    {
-                      errorType: response.errorType,
-                      errorCode: response.errorCode,
-                      message: response.errorMessage,
-                      httpStatus: response.httpStatus,
-                    },
-                    null,
-                    2
-                  )}
+                <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 1, letterSpacing: 0.5 }}>TECHNICAL DETAIL</Typography>
+                <pre style={{ margin: 0, fontFamily: "'Fira Code', 'Consolas', monospace", fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: theme.palette.error.main, lineHeight: 1.6 }}>
+                  {JSON.stringify({ errorType: response.errorType, errorCode: response.errorCode, message: response.errorMessage, httpStatus: response.httpStatus }, null, 2)}
                 </pre>
               </Box>
             </Paper>
